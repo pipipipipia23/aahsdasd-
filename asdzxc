@@ -9,6 +9,7 @@ local vu = game:GetService("VirtualUser")
 local plr = game.Players.LocalPlayer
 local Client = require(game.ReplicatedStorage.Library.Client)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Hiepphamone/lowmap/main/lowmap"))()
+game:GetService("RunService"):Set3dRenderingEnabled(true)
 
 getgenv().Builder = {
     Potion = {
