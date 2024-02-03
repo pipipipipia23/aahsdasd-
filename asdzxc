@@ -770,17 +770,18 @@ function getfoderlastmap()
     return a
 end
 
-function checkmail() 
+function checkmail()
     local tb = {
         [1] = {
-
+    
         }
     }
     local a = game:GetService("ReplicatedStorage").Network["Mailbox: Get"]:InvokeServer()
-    print(a)
     if type(a) == 'table' then
-        for i,v in pairs(a.Inbox) do
-            table.insert(tb[1], v.uuid)
+        if a.Inbox then
+            for i,v in pairs(a.Inbox) do
+                table.insert(tb[1], v.uuid)
+            end
         end
     end
     if #tb[1] > 0 then
