@@ -1,4 +1,4 @@
-wait(10)
+wait(5)
 print("AAAAAAAAAAAAAAAAAAAAA")
 repeat wait() until game.Players
 repeat wait() until game.Players.LocalPlayer
@@ -8,7 +8,7 @@ repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui:FindFirstCh
 local vu = game:GetService("VirtualUser")
 local plr = game.Players.LocalPlayer
 local Client = require(game.ReplicatedStorage.Library.Client)
-
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Hiepphamone/lowmap/main/lowmap"))()
 ----------------------- Mergesort convert map
 function mergesort(arr, compareFunc)
     local function merge(left, right)
@@ -798,11 +798,24 @@ function detc4()
     click3(game:GetService("Players").LocalPlayer.PlayerGui.Rank.Frame.Side.Balance)
 end
 
-game:GetService("RunService").Stepped:Connect(function()
-    pcall(whatthef)
-    pcall(collectrank)
-    pcall(detc4)
+spawn(function()
+    while true do wait()
+        pcall(whatthef)
+    end
 end)
+
+spawn(function()
+    while true do wait()
+        pcall(collectrank)
+    end
+end)
+
+spawn(function()
+    while true do wait()
+        pcall(detc4)
+    end
+end)
+
 
 spawn(function()
     while true do wait(5)
