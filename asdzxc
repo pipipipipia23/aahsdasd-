@@ -145,12 +145,6 @@ function attack()
     end
 end
 
-game:GetService("RunService").Heartbeat:Connect(function()
-    spawn(function()
-	    game:GetService("ReplicatedStorage").Network.Breakables_PlayerDealDamage:FireServer(attack())
-    end)
-end)
-
 function getnextmap()
     return Client.ZoneCmds.GetNextZone()
 end
@@ -812,10 +806,18 @@ end)
 
 spawn(function()
     while true do wait()
-        pcall(detc4)
+        spawn(function()
+            game:GetService("ReplicatedStorage").Network.Breakables_PlayerDealDamage:FireServer(attack())
+        end)
+        
     end
 end)
 
+spawn(function()
+    while true do wait()
+        pcall(detc4)
+    end
+end)
 
 spawn(function()
     while true do wait(5)
