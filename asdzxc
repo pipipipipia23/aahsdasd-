@@ -806,10 +806,9 @@ end)
 
 spawn(function()
     while true do wait()
-        spawn(function()
+        pcall(function()
             game:GetService("ReplicatedStorage").Network.Breakables_PlayerDealDamage:FireServer(attack())
         end)
-        
     end
 end)
 
