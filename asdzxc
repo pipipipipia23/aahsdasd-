@@ -10,6 +10,7 @@ local plr = game.Players.LocalPlayer
 local Client = require(game.ReplicatedStorage.Library.Client)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Hiepphamone/lowmap/main/lowmap"))()
 ----------------------- Mergesort convert map
+getgenv().ticka = tick()
 function mergesort(arr, compareFunc)
     local function merge(left, right)
         local result = {}
@@ -95,6 +96,14 @@ end
 function hasunlockzones(name) 
     return Client.ZoneCmds.Owns(name)
 end
+
+spawn(function()
+    while true do wait(1)
+        if tick() - getgenv().ticka > 60 * 5 then
+            game:Shutdown()
+        end
+    end
+end)
 
 function romanToNumber(roman)
     local numerals = {
