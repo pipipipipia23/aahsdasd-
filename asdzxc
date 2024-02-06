@@ -99,7 +99,7 @@ end
 
 spawn(function()
     while true do wait(1)
-        if tick() - getgenv().ticka > 60 * 5 then
+        if tick() - getgenv().ticka > 60 * 20 then
             game:Shutdown()
         end
     end
@@ -276,13 +276,15 @@ function potion(number)
     return false
 end
 
+getgenv().values = getupvalues(Client.MachineCmds.GetAll)
+
 function getdataitem(nameitem)    
     local a = Client.Save.Get()
     for i,v in pairs(a.VendingStocks) do
         if string.find(string.lower(i), nameitem) and Client.MachineCmds.Owns(i) and v > 0 then
             local returnaz = v >= 4 and 3 or v
-            if returnaz > 0 and getupvalues(Client.MachineCmds.GetAll)[2][i] ~= nil then
-                return {getupvalues(Client.MachineCmds.GetAll)[2][i][1].Pad.arrowPivot, i, returnaz}
+            if returnaz > 0 and getgenv().values[2][i] ~= nil then
+                return {getgenv().values[2][i][1].Pad.arrowPivot, i, returnaz}
             end
         end
     end
@@ -293,7 +295,7 @@ function getdatadily(nameitem)
     local a = Client.Save.Get()
     for i,v in pairs(a.TimedRewardTimestamps) do
         if string.find(string.lower(i), nameitem) and Client.MachineCmds.Owns(i) then
-            for i1,v1 in pairs(getupvalues(Client.MachineCmds.GetAll)[2]) do
+            for i1,v1 in pairs(getgenv().values[2]) do
                 if i1 == i then
                     if type(v1) == 'table' then
                         return v1[1].Pad.arrowPivot
