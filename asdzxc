@@ -691,6 +691,14 @@ end
 function getrank()
     return Client.Save.Get().Rank
 end
+spawn(function()
+    while true do wait(1)
+        if tick() - getgenv().ticka > 60 * 20 then
+            game:Shutdown()
+        end
+    end
+end)
+
 getgenv().coinsold = 0
 function mainfarmer()
     if checkmail() ~= false then
