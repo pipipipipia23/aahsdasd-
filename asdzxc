@@ -173,7 +173,7 @@ end
 
 function formatquest()
     -- table.insert(tablea, {b.MakeTitle(v), v.Amount, v.Progress})
-    local b =  Client.RankCmds
+    local b =  Client.QuestCmds
     local a = Client.Save.Get()
     getgenv().tablequest = {}
     for i,v in pairs(a.Goals) do
