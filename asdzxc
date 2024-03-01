@@ -97,6 +97,14 @@ function hasunlockzones(name)
     return Client.ZoneCmds.Owns(name)
 end
 
+spawn(function()
+    while true do wait(1)
+        if tick() - getgenv().ticka > 60 * 10 then
+            game:Shutdown()
+        end
+    end
+end)
+
 function romanToNumber(roman)
     local numerals = {
         ["i"] = 1,
@@ -165,7 +173,9 @@ function dbuoi()
 end
 
 function mtfer()
-    game:GetService("ReplicatedStorage").Network.Zones_RequestPurchase:InvokeServer(formatclient(getnextmap()))
+    if hasunlockzones('Tiki') == false or getstatusquest("unlock") then
+        game:GetService("ReplicatedStorage").Network.Zones_RequestPurchase:InvokeServer(formatclient(getnextmap()))
+    end
     local a = Client.RebirthCmds.GetNextRebirth()
     local b = Client.RebirthCmds.Rebirth(tostring(a._id))
     pcall(dbuoi)
@@ -691,14 +701,6 @@ end
 function getrank()
     return Client.Save.Get().Rank
 end
-spawn(function()
-    while true do wait(1)
-        if tick() - getgenv().ticka > 60 * 10 then
-            game:Shutdown()
-        end
-    end
-end)
-
 getgenv().coinsold = 0
 function mainfarmer()
     if checkmail() ~= false then
