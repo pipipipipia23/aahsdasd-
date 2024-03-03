@@ -8,7 +8,6 @@ repeat wait() until game:GetService("Players").LocalPlayer.PlayerGui:FindFirstCh
 local vu = game:GetService("VirtualUser")
 local plr = game.Players.LocalPlayer
 local Client = require(game.ReplicatedStorage.Library.Client)
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Hiepphamone/lowmap/main/lowmap"))()
 ----------------------- Mergesort convert map
 getgenv().ticka = tick()
 function mergesort(arr, compareFunc)
