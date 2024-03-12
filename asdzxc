@@ -99,7 +99,7 @@ end
 spawn(function()
     while true do wait(1)
         if tick() - getgenv().ticka > 60 * 10 then
-            game:Shutdown()
+            plr.Kick(
         end
     end
 end)
