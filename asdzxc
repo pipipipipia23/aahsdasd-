@@ -413,6 +413,18 @@ function getplayerzone()
     return Client.MapCmds.GetPlayerZone()
 end
 
+function onehitspeed()
+    local Library = require(game:GetService("ReplicatedStorage").Library)
+    local Network = Library.Network
+    local Balancing = Library.Balancing
+    local Zones = Library.Directory.Zones
+    local pets = Library.Save.Get().Inventory.Pet	
+    Library.PlayerPet.CalculateSpeedMultiplier = function(...)
+        return 999999999
+    end
+end
+onehitspeed()
+
 function formatclient(name)
     local pattern = " table: .*$"
     local result = name:gsub(pattern, "") 
