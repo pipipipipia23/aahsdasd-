@@ -880,7 +880,11 @@ function main()
                 end
                 wait(2)
             end
-            if getgenv().ditmevailon == true or getgenv().notfulllvl == true then
+            if getgenv().ditmevailon == true then
+                joinstage("Stage1", "Act1")
+                return
+            end
+            if getgenv().ditmevailon ~= true or getgenv().notfulllvl == true then
                 joinstage("Stage1", "Act2")
                 getgenv().stop = true
             else
