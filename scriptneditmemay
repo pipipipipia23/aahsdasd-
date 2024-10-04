@@ -14,7 +14,7 @@ getgenv().config = { -- dont change it (have smart config combo auto)
 }
 
 function loadscript()
-getgenv().config = { -- dont change it (have smart config combo auto)
+    getgenv().config = { -- dont change it (have smart config combo auto)
     combo_auto_igris = {
         "Vogita Super",
         "Sprintwagon",
@@ -273,7 +273,7 @@ spawn(function()
                 getconnections(plr.PlayerGui.SkipWave.Holder.Yes.Button.Activated)[1]:Fire()
             end
             if plr.PlayerGui.EndScreen.Container.Visible == true and plr.PlayerGui.EndScreen.Enabled == true then
-                if getmoney() >= 20000 and tick() > tonumber(getgenv().timebanner) then
+                if getmoney() >= 15000 and tick() > tonumber(getgenv().timebanner) then
                     spawn(function()
                         local ts = TeleportRef
                         local p = plr
@@ -561,6 +561,9 @@ function gettimebanner()
 end
 
 function autosummon()
+    if haveinlist("Sprintwagon") and haveinlist("Alligator") then
+        turnonsetting("Epic")
+    end
     if getmoney() > 500 then
         local args = {
             [1] = "SummonTen",
@@ -730,7 +733,7 @@ pcall(function()
     local unitdata = getunit()
     if haveinlist(getgenv().config.combo_auto_igris[4]) == false then
         for i,v in pairs(unitdata) do
-            if v.UnitData.Rarity == "Mythic" and v.UnitData.MaxPlacements >= 3 then
+            if v.UnitData.Rarity == "Mythic" and v.UnitData.MaxPlacements >= 3 and v.UnitData.Name ~= "Vogita Super" then
                 getgenv().config.combo_auto_igris[4] = v.UnitData.Name
             end
         end
@@ -843,11 +846,13 @@ spawn(function()
 end)
 
 function main()
-    if getmoney() > 500 and getgenv().nomorebanner == true then
+    if getmoney() > 500 and getgenv().nomorebanner ~= true then
+        print("Unit : ", getgenv().unitinbanner)
         if getgenv().unitinbanner == nil then
             gethigher()
             return
         end
+
         for i,v in pairs(getgenv().config.combo_auto_igris) do
             if getgenv().unitinbanner == v and not haveinlist(v) then
                 autosummon()
