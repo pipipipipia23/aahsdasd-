@@ -183,7 +183,7 @@ function abc()
             end
         elseif gamedata.Stage == "Stage1" then
             local a,b = pcall(function()
-                print("LastMap")
+                print("Nextmap1")
                 getgenv().loadmacro = HttpService:JSONDecode(readfile("NextMap1.txt"))
             end)
             if not a then
@@ -199,7 +199,7 @@ function abc()
             end
         elseif gamedata.Stage == "Stage2" then
             local a,b = pcall(function()
-                print("NextMap")
+                print("Nextmap2")
                 getgenv().loadmacro = HttpService:JSONDecode(readfile("NextMap2.txt"))
             end)
             if not a then
@@ -386,6 +386,7 @@ spawn(function()
         if xamlok == "HTTP Error Code: 404 Reason: Not Found" then
             return 
         end
+        print("Write new macro")
         writefile(i.. ".txt", xamlok)
     end
 end)
@@ -879,7 +880,7 @@ function main()
                 wait(2)
             end
             if getgenv().ditmevailon == true or getgenv().notfulllvl == true then
-                joinstage("Stage1", "Act1")
+                joinstage("Stage1", "Act2")
                 getgenv().stop = true
             else
                 if getnextmap() == false then
