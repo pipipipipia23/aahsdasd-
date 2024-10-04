@@ -69,6 +69,7 @@ function postouid(pos)
             return v.Name
         end
     end
+    return false
 end
 
 function remote(method, data)
@@ -239,7 +240,7 @@ spawn(function()
                     remote("Render", l_Name_2)
                     index = index + 1
                 end
-                if getgenv().loadmacro[index].data.Method == "Upgrade" and YEN >= getgenv().loadmacro[index].data.Money then
+                if getgenv().loadmacro[index].data.Method == "Upgrade" and YEN >= getgenv().loadmacro[index].data.Money and postouid(stringtopos(getgenv().loadmacro[index].data.CFrame)) ~= false then
                     print("IN HERE5?")
                     wait(3)
                     remote("Upgrade", postouid(stringtopos(getgenv().loadmacro[index].data.CFrame)))
