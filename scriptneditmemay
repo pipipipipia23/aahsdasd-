@@ -369,6 +369,7 @@ local plr = cloneref(game.Players.LocalPlayer)
 local StartPlayer = cloneref(game:GetService("StarterPlayer"))
 local Storage = cloneref(game:GetService("ReplicatedStorage"))
 local Workspace = cloneref(workspace)
+local HttpService = cloneref(game:GetService("HttpService"))
 local UnitHandler = require(StartPlayer.Modules.Interface.Loader.Windows.UnitWindowHandler)
 local InventoryHandler = require(StartPlayer.Modules.Interface.Loader.Windows.InventoryHandler)
 local LobbyHandler = require(StartPlayer.Modules.Interface.Loader.Windows.Lobby.LobbyHandler)
@@ -741,6 +742,15 @@ pcall(function()
         end
     end
 end)
+
+-- custom macro kekekeke
+
+pcall(function()
+    if getgenv().config.combo_auto_igris[4] ~= "Sosuke (Hebi)" then
+        
+    end
+end)
+
 -- auto
 local plr = game.Players.LocalPlayer
 function checkplayerin(pos)
@@ -884,7 +894,7 @@ function main()
                 joinstage("Stage1", "Act1")
                 return
             end
-            if getgenv().ditmevailon ~= true or getgenv().notfulllvl == true then
+            if getgenv().ditmevailon ~= true and getgenv().notfulllvl == true then
                 joinstage("Stage1", "Act2")
                 getgenv().stop = true
             else
