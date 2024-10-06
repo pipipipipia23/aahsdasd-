@@ -992,9 +992,14 @@ function getnextmap()
                 num = tonumber(actNumber)
                 a = "Act" .. actNumber
             end
+        else
+            if nextstage == "Stage3" then
+                num = 7
+                a = "Infinite"
+            end
         end
     end
-    if nextstage == "Stage3" and a == "Act6" then
+    if nextstage == "Stage3" and a == "Infinite" then
         return false
     else
         return a
@@ -1020,11 +1025,7 @@ function getnextmaplegend()
             a = "Act" .. actNumber
         end
     end
-    if nextstage == "Stage3" and a == "Act6" then
-        return false
-    else
-        return a
-    end
+    return a
 end
 
 function joinstage(stage, act, mode)
@@ -1148,7 +1149,7 @@ function main()
                             joinstage("Stage2", "Act1", "LegendStage")
                         else
                             print("CA5")
-                            joinstage(legenstage(), getnextmap(), "LegendStage")
+                            joinstage(legenstage(), getnextmaplegend(), "LegendStage")
                         end
                     end
                 end
