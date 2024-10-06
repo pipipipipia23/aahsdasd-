@@ -1116,7 +1116,7 @@ function main()
                     end
                     wait(2)
                 end
-                getgenv().notfulllvl = false
+                getgenv().ditmevailon = false
             end
             if getgenv().ditmevailon == true then
                 joinstage("Stage1", "Act1", "Story")
