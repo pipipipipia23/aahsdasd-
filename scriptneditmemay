@@ -37,23 +37,13 @@ local TeleportRef = cloneref(game:GetService("TeleportService"))
 local clonestep2_1 = cloneref(Storage.Modules.Gameplay.GameHandler)
 local clonestep2_2 = cloneref(StartPlayer.Modules.Interface.Loader.HUD.Units)
 local clonestep2_3 = cloneref(Storage.Modules.Data.Entities.EntityIDHandler.Units)
+local Yenhandler = cloneref(StartPlayer.Modules.Gameplay.PlayerYenHandler)
 local GameHandler = require(clonestep2_1)
 local UnitEquipedData = require(clonestep2_2)
 local UnitsName = require(clonestep2_3)
-
-local gamedata = GameHandler.GameData
-
-table.foreach(gamedata, print)
+local v22 = require(Yenhandler)
 
 print("Start rec macro")
-
-local YEN = 0
-
-YenEvent.OnClientEvent:Connect(function(v9)
-    pcall(function()
-        YEN = v9
-    end)
-end)
 
 local macro = {}
 
@@ -90,7 +80,7 @@ end
 
 function calcmoney(name)
     local path = "nil"
-    for i,v in pairs(Storage.Modules.Data.Entities.UnitsData.Default:GetDescendants()) do
+    for i,v in pairs(Storage.Modules.Data.Entities.UnitsData:GetDescendants()) do
         if v.Name == name then
             path = v
         end
@@ -120,7 +110,7 @@ function calcmoneyupdate(name)
     local path = "nil"
     local unitne = posfindunit(name)
     print(unitne)
-    for i,v in pairs(Storage.Modules.Data.Entities.UnitsData.Default:GetDescendants()) do
+    for i,v in pairs(Storage.Modules.Data.Entities.UnitsData:GetDescendants()) do
         if v.Name == unitne then
             path = v
         end
@@ -245,6 +235,7 @@ local index = 1
 spawn(function() 
 	while true do wait(1)
 		local a,b = pcall(function()
+            local YEN = v22:GetYen()
             if getgenv().recmacro ~= true then
                 if getgenv().loadmacro[index].data.Method == "Render" and YEN >= getgenv().loadmacro[index].data.Money then
                     print("IN HERE4?")
