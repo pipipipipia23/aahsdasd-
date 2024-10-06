@@ -1132,6 +1132,7 @@ function main()
                     else
                         if awakenne == "NeedBean" then
                             joinstage("Stage1", "Act1" , "Story")
+                            writefile("farm_crystal.txt", "Duocnekhjhj")
                             return
                         end
                         if legenstage() == "Stage3" and awakenne == "NeedGreen" then
