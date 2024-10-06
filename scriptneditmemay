@@ -1074,6 +1074,12 @@ spawn(function()
     writefile("farm_crystal.txt", "DeoDuocNehjhj")
 end)
 
+spawn(function()
+    if haveinlist("Igros") then
+        writefile(plr.Name .. ".txt", "Completed-AccHoanThanh")
+    end
+end)
+
 function main()
     if getmoney() > 500 and getgenv().nomorebanner ~= true then
         print("Unit : ", getgenv().unitinbanner)
