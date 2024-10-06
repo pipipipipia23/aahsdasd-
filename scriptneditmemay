@@ -199,7 +199,7 @@ function abc()
             if not a then
                 game:Shutdown()
             end
-        elseif gamedata.Stage == "Stage3" and StageType == "Story" then
+        elseif gamedata.Stage == "Stage3" and gamedata.StageType == "Story" then
             local a,b = pcall(function()
                 print("LastMap")
                 getgenv().loadmacro = HttpService:JSONDecode(readfile("NextMap3.txt"))
@@ -215,7 +215,7 @@ function abc()
             if not a then
                 game:Shutdown()
             end
-        elseif gamedata.Stage == "Stage3" and StageType == "LegendStage" then
+        elseif gamedata.Stage == "Stage3" and gamedata.StageType == "LegendStage" then
             local a,b = pcall(function()
                 print("Danh boss")
                 getgenv().loadmacro = HttpService:JSONDecode(readfile("LastMap.txt"))
