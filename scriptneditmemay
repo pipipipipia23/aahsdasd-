@@ -1131,7 +1131,7 @@ function main()
                         joinstage(legenstage(), getnextmap(), "LegendStage")
                     else
                         if awakenne == "NeedBean" then
-                            joinstage("Stage1", "Act1" , "Story")
+                            joinstage("Stage1", "Act2" , "Story")
                             writefile("farm_crystal.txt", "Duocnekhjhj")
                             return
                         end
