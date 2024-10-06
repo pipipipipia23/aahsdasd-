@@ -1120,7 +1120,8 @@ function main()
                 spawn(function()
                     writefile("can_next_map.txt", "Duocnekhjhj")
                 end)
-                if getnextmap() == false then
+                if getnextmap() ~= false then
+                    print("CA1")
                     joinstage(getnextstage(), getnextmap(), "Story")
                 else
                     local awakenne = awakenvegeta()
@@ -1128,12 +1129,14 @@ function main()
                         return
                     end
                     if awakenne == false then
+                        print("CA2")
                         joinstage(legenstage(), getnextmap(), "LegendStage")
                     else
                         if awakenne == "NeedBean" then
                             spawn(function()
                                 writefile("farm_crystal.txt", "Duocnekhjhj")
                             end)
+                            print("CA3")
                             joinstage("Stage1", "Act2" , "Story")
                             return
                         end
@@ -1141,8 +1144,10 @@ function main()
                             spawn(function()
                                 writefile("farm_crystal.txt", "Duocnekhjhj")
                             end)
+                            print("CA4")
                             joinstage("Stage2", "Act1", "LegendStage")
                         else
+                            print("CA5")
                             joinstage(legenstage(), getnextmap(), "LegendStage")
                         end
                     end
