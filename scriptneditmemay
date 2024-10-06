@@ -129,7 +129,7 @@ function calcmoneyupdate(name)
         end
     end
 end
-
+local index = 1
 if getgenv().recmacro == true then
     Storage.Networking.UnitEvent.OnClientEvent:Connect(function(...)
         local args = {...}
@@ -149,6 +149,18 @@ if getgenv().recmacro == true then
                 print("one here")
                 defaultindex = defaultindex + 1
                 table.insert(macro, {data = {Method = "Sell" , Money = calcmoneyupdate(args[2]), CFrame = tostring(getpos(args[2]))}})
+            end
+        end)
+    end)
+else
+    Storage.Networking.UnitEvent.OnClientEvent:Connect(function(...)
+        local args = {...}
+        pcall(function()
+            if args[1] == "Render" then
+                index = index + 1
+            end
+            if args[1] == "Upgrade" then
+                index = index + 1
             end
         end)
     end)
