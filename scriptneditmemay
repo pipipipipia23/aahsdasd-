@@ -1091,7 +1091,7 @@ function main()
         getgenv().nomorebanner = true
     else 
         -- if getlevel() > 30 then
-            if getgenv().notfulllvl == nil and getgenv().ditmevailon == nil then
+            if getgenv().asdhsuadsahjda == nil then
                 for i,v in pairs(getgenv().config.combo_auto_igris) do
                     local getbest = getbestunit(v)
                     if getbest ~= nil then
@@ -1108,7 +1108,7 @@ function main()
                     end
                     wait(2)
                 end
-                getgenv().ditmevailon = false
+                getgenv().asdhsuadsahjda = false
             end
             if getgenv().ditmevailon == true then
                 joinstage("Stage1", "Act1", "Story")
