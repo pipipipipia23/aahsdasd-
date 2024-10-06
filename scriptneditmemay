@@ -262,12 +262,12 @@ end)
 
 -- auto out
 print(getgenv().farmcrystall, "Auto out active")
-if getgenv().farmcrystall == true then
+if getgenv().farmcrystall == true or getgenv().deoduocout == true then
     spawn(function()
         local tickout = tick()
         repeat wait()
 
-        until tick() - tickout >= 60 * 60
+        until tick() - tickout >= 60 * 90
         local ts = TeleportRef
         local p = plr
         ts:Teleport(16146832113, p)
