@@ -306,6 +306,7 @@ spawn(function()
                 getconnections(plr.PlayerGui.SkipWave.Holder.Yes.Button.Activated)[1]:Fire()
             end
             if plr.PlayerGui.EndScreen.Container.Visible == true and plr.PlayerGui.EndScreen.Enabled == true then
+                index = 1
                 if getmoney() >= 15000 and tick() > tonumber(getgenv().timebanner) then
                     spawn(function()
                         local ts = TeleportRef
@@ -340,9 +341,6 @@ spawn(function()
                     print("get connection")
                     getconnections(plr.PlayerGui.EndScreen.Container.EndScreen.Retry.Button.Activated)[1]:Fire()
                 end)
-                if not plr.PlayerGui:FindFirstChild("RewardsDisplay") then
-                    index = 1
-                end
             end
         end)
     end
