@@ -10,6 +10,7 @@ getgenv().config = { -- dont change it (have smart config combo auto)
         NextMap1 = "https://raw.githubusercontent.com/pipipipipia23/aahsdasd-/refs/heads/main/NextMap1",
         NextMap2 = "https://raw.githubusercontent.com/pipipipipia23/aahsdasd-/refs/heads/main/NextMap2",
         NextMap3 = "https://raw.githubusercontent.com/pipipipipia23/aahsdasd-/refs/heads/main/NextMap3",
+        LastMap = "https://raw.githubusercontent.com/pipipipipia23/aahsdasd-/refs/heads/main/LastMap"
     }
 }
 
@@ -39,6 +40,10 @@ local clonestep2_3 = cloneref(Storage.Modules.Data.Entities.EntityIDHandler.Unit
 local GameHandler = require(clonestep2_1)
 local UnitEquipedData = require(clonestep2_2)
 local UnitsName = require(clonestep2_3)
+
+local gamedata = GameHandler.GameData
+
+table.foreach(gamedata, print)
 
 print("Start rec macro")
 
@@ -160,8 +165,9 @@ if getgenv().recmacro == true then
 end
 
 getgenv().loadmacro = {}
-
+getgenv().farmcrystall = false
 getgenv().timebanner = 0
+getgenv().nextmap = false
 function abc()
     wait(3)
     local gamedata = GameHandler.GameData
@@ -173,6 +179,9 @@ function abc()
     else
         print("Time banner")
         getgenv().timebanner = readfile("TimeBanner.txt")
+
+        getgenv().nextmap = readfile("can_next_map.txt") == "Duocnekhjhj"
+        getgenv().farmcrystall = readfile("farm_crystal.txt") == "Duocnekhjhj"
 
         if gamedata.Act == "Act1" and gamedata.Stage == "Stage1" then
             local a,b = pcall(function()
@@ -190,7 +199,7 @@ function abc()
             if not a then
                 game:Shutdown()
             end
-        elseif gamedata.Stage == "Stage3" then
+        elseif gamedata.Stage == "Stage3" and StageType == "Story" then
             local a,b = pcall(function()
                 print("LastMap")
                 getgenv().loadmacro = HttpService:JSONDecode(readfile("NextMap3.txt"))
@@ -202,6 +211,14 @@ function abc()
             local a,b = pcall(function()
                 print("Nextmap2")
                 getgenv().loadmacro = HttpService:JSONDecode(readfile("NextMap2.txt"))
+            end)
+            if not a then
+                game:Shutdown()
+            end
+        elseif gamedata.Stage == "Stage3" and StageType == "LegendStage" then
+            local a,b = pcall(function()
+                print("Danh boss")
+                getgenv().loadmacro = HttpService:JSONDecode(readfile("LastMap.txt"))
             end)
             if not a then
                 game:Shutdown()
@@ -250,6 +267,21 @@ spawn(function()
 		end)
 	end
 end)
+
+-- auto out
+print(getgenv().farmcrystall, "Auto out active")
+if getgenv().farmcrystall == true then
+    spawn(function()
+        local tickout = tick()
+        repeat wait()
+
+        until tick() - tickout >= 60 * 60
+        local ts = TeleportRef
+        local p = plr
+        ts:Teleport(16146832113, p)
+    end)
+end
+
 -- GameHandler
 spawn(function()
     while true do wait(1.5)
@@ -283,13 +315,18 @@ spawn(function()
                     return
                 end
                 if getgenv().nextmap == true then
+                    print("Duoc ne dit me asdasdsadsadsad")
                     if plr.PlayerGui.EndScreen.Container.EndScreen.Main.FailedLabel.Visible == false then
-                        spawn(function()
-                            local ts = TeleportRef
-                            local p = plr
-                            ts:Teleport(16146832113, p)
-                            return
-                        end)
+                        if getgenv().farmcrystall == false then
+                            spawn(function()
+                                local ts = TeleportRef
+                                local p = plr
+                                ts:Teleport(16146832113, p)
+                                return
+                            end)
+                        else
+                            getconnections(plr.PlayerGui.EndScreen.Container.EndScreen.Retry.Button.Activated)[1]:Fire()
+                        end
                     else
                         spawn(function()
                             print("get connection")
@@ -339,20 +376,6 @@ spawn(function()
     end
 end)
 
-getgenv().nextmap = false
-
-spawn(function() -- fixer loop
-    while true do wait(5)
-        pcall(function()
-            if findUnit("Vogita Super") and findUnit("Sprintwagon") and findUnit("Alligator") then
-                getgenv().nextmap = true
-            else
-                getgenv().nextmap = false
-            end
-        end)
-    end
-end)
-
 spawn(function()
     while getgenv().recmacro == true do wait(1)
         writefile("dmm.txt", HttpService:JSONEncode(macro))
@@ -370,6 +393,7 @@ local StartPlayer = cloneref(game:GetService("StarterPlayer"))
 local Storage = cloneref(game:GetService("ReplicatedStorage"))
 local Workspace = cloneref(workspace)
 local HttpService = cloneref(game:GetService("HttpService"))
+local TeleportRef = cloneref(game:GetService("TeleportService"))
 local UnitHandler = require(StartPlayer.Modules.Interface.Loader.Windows.UnitWindowHandler)
 local InventoryHandler = require(StartPlayer.Modules.Interface.Loader.Windows.InventoryHandler)
 local LobbyHandler = require(StartPlayer.Modules.Interface.Loader.Windows.Lobby.LobbyHandler)
@@ -731,26 +755,208 @@ function findandfeed(id)
     }
     Storage.Networking.Units.FeedEvent:FireServer(unpack(args))
 end
--- find and change another legen
+---
+
+local datacraft = {
+    ["Senzu Bean"] = 80, 
+    ["Green Essence Stone"] = 35,
+    ["Blue Essence Stone"] = 15,
+    ["Yellow Essence Stone"] = 10,
+    ["Rainbow Essence Stone"] = 2,
+}
+
+function checkitemAM(name,amount)
+    local l_v9_Inventory_1 = InventoryHandler:GetInventory()
+    for i,v in pairs(l_v9_Inventory_1) do
+        if v.Data.Name == name then
+            return v.Amount >= amount
+        end
+    end
+    return false
+end
+
+function craftitem(name)
+    if name == "Rainbow Essence Stone" then
+        local args = {
+            [1] = "Craft",
+            [2] = name,
+            [3] = 1
+        }
+        
+        Storage.Networking.State.CraftingEvent:FireServer(unpack(args))   
+        return
+    end
+    if checkitemAM("Green Essence Stone", 3) == true then
+        local args = {
+            [1] = "Craft",
+            [2] = name,
+            [3] = 1
+        }
+        
+        Storage.Networking.State.CraftingEvent:FireServer(unpack(args))
+    else
+        return "NeedGreen"
+    end
+end
+
+function awakenvegeta()
+    for i,v in pairs(datacraft) do
+        if checkitemAM(i, v) == false then
+            getgenv().cantawake = true
+            if string.find(i, "Stone") and i ~= "Rainbow Essence Stone" then
+                if i ~= "Green Essence Stone" then
+                    if checkitemAM(i, v) == false then
+                        return craftitem(i)
+                    end
+                else
+                    if checkitemAM(i, v) == false then
+                        return "NeedGreen"
+                    end
+                end
+            elseif i ~= "Rainbow Essence Stone" then
+                if checkitemAM(i, v) == false then
+                    return "NeedBean"
+                end
+            elseif i == "Rainbow Essence Stone" then
+                if checkitemAM("Rainbow Essence Stone", 1) == true then
+                    
+                else
+                    if checkitemAM("Pink Essence Stone", 1) ~= true then
+                        return craftitem("Pink Essence Stone")
+                    end
+                    if checkitemAM("Blue Essence Stone", 1) ~= true then
+                        return craftitem("Blue Essence Stone")
+                    end
+                    if checkitemAM("Red Essence Stone", 1) ~= true then
+                        return craftitem("Red Essence Stone")
+                    end
+                    if checkitemAM("Yellow Essence Stone", 1) ~= true then
+                        return craftitem("Yellow Essence Stone")
+                    end
+                    if checkitemAM("Purple Essence Stone", 1) ~= true then
+                        return craftitem("Purple Essence Stone")
+                    end
+                    if checkitemAM("Rainbow Essence Stone", 1) ~= true then
+                        craftitem("Rainbow Essence Stone")
+                    end
+                end
+            end
+        end
+    end
+    if getgenv().cantawake == true and not haveinlist("Vogita Super (Awakened)") then
+        local args = {
+            [1] = getbestunit("Vogita Super")[1]
+        }
+        
+        Storage.Networking.Units.EvolveEvent:FireServer(unpack(args))
+        wait(2)
+        local ts = TeleportRef
+        local p = plr
+        ts:Teleport(16146832113, p)
+    end
+    return false
+end
+
+-- find and change another legen Vogita Super (Awakened)
 pcall(function()
     local unitdata = getunit()
     if haveinlist(getgenv().config.combo_auto_igris[4]) == false then
         for i,v in pairs(unitdata) do
-            if v.UnitData.Rarity == "Mythic" and v.UnitData.MaxPlacements >= 3 and v.UnitData.Name ~= "Vogita Super" then
+            if v.UnitData.Rarity == "Mythic" and v.UnitData.MaxPlacements > 3 and v.UnitData.Name ~= "Vogita Super" then
                 getgenv().config.combo_auto_igris[4] = v.UnitData.Name
             end
         end
+    end
+    if haveinlist("Vogita Super (Awakened)") then
+        getgenv().config.combo_auto_igris[1] = "Vogita Super (Awakened)"
     end
 end)
 
 -- custom macro kekekeke
 
-pcall(function()
-    if getgenv().config.combo_auto_igris[4] ~= "Sosuke (Hebi)" then
-        
+function custommacro(link,namemacro)
+    local xamlok = game:HttpGet(link, true)
+    getgenv().loadmacro = HttpService:JSONDecode(xamlok)
+    
+    function calcmoney(name)
+        local path = "nil"
+        for i,v in pairs(Storage.Modules.Data.Entities.UnitsData.Default:GetDescendants()) do
+            if v.Name == name then
+                path = v
+            end
+        end
+        local refcl = cloneref(path)
+        local vail = require(refcl)
+        return vail.Price
     end
-end)
+    
+    function calcmoneyupdate(name,price)
+        local path = "nil"
+        for i,v in pairs(Storage.Modules.Data.Entities.UnitsData.Default:GetDescendants()) do
+            if v.Name == name then
+                path = v
+            end
+        end
+        local refcl = cloneref(path)
+        local vail = require(refcl)
+        for i,v in pairs(vail.Upgrades) do
+            if v.Price == price then
+                return i
+            end
+        end
+        return false
+    end
+    
+    function calcmoneyupdate2(name,index)
+        local path = "nil"
+        for i,v in pairs(Storage.Modules.Data.Entities.UnitsData.Default:GetDescendants()) do
+            if v.Name == name then
+                path = v
+            end
+        end
+        local refcl = cloneref(path)
+        local vail = require(refcl)
+        return vail.Upgrades[index].Price or 999999999999
+    end
+    
+    local allpos = {}
+    
+    for i,v in pairs(getgenv().loadmacro) do
+        if v.data.Method == "Render" then
+            if getgenv().loadmacro[i].data.Name == "Sosuke (Hebi)" then
+                allpos[getgenv().loadmacro[i].data.CFrame] = getgenv().loadmacro[i].data.Name
+                getgenv().loadmacro[i].data.Name = getgenv().config.combo_auto_igris[4]
+                getgenv().loadmacro[i].data.Money = calcmoney(getgenv().config.combo_auto_igris[4])
+            end
+        end
+    end
+    
+    local datasave = {}
+    
+    for i,v in pairs(getgenv().loadmacro) do
+        if v.data.Method == "Upgrade" then
+            if allpos[getgenv().loadmacro[i].data.CFrame] then
+                table.insert(datasave , {getgenv().loadmacro[i].data.CFrame, getgenv().loadmacro[i].data.Money})
+            end
+        end
+    end
+    
+    for i,v in pairs(getgenv().loadmacro) do
+        if v.data.Method == "Upgrade" then
+            for i1,v1 in pairs(datasave) do
+                if v1[1] == getgenv().loadmacro[i].data.CFrame and v1[2] == getgenv().loadmacro[i].data.Money then
+                    getgenv().loadmacro[i].data.Money = calcmoneyupdate2(getgenv().config.combo_auto_igris[4], calcmoneyupdate("Sosuke (Hebi)",v1[2]))
+                end
+            end
+        end
+    end
+    writefile(namemacro .. ".txt",HttpService:JSONEncode(getgenv().loadmacro))
+end
 
+pcall(function()
+    print("Let custom")
+    custommacro("https://raw.githubusercontent.com/pipipipipia23/aahsdasd-/refs/heads/main/NextMap3", "NextMap3")
+end)
 -- auto
 local plr = game.Players.LocalPlayer
 function checkplayerin(pos)
@@ -782,9 +988,11 @@ function getnextmap()
     local num = 1
     local nextstage = getnextstage()
     for i,v in pairs(LobbyHandler.PlayerData.Stages.Story[nextstage]) do
-        local actNumber = i:gsub("Act", "")
-        if tonumber(actNumber) > num and i ~= "Infinite" then
-            a = i
+        if i ~= "Infinite" then
+            local actNumber = i:gsub("Act", "")
+            if tonumber(actNumber) > num then
+                a = "Act" .. actNumber
+            end
         end
     end
     if nextstage == "Stage3" and a == "Act6" then
@@ -809,7 +1017,7 @@ function getnextmaplegend()
     for i,v in pairs(LobbyHandler.PlayerData.Stages.LegendStage[nextstage]) do
         local actNumber = i:gsub("Act", "")
         if tonumber(actNumber) > num and i ~= "Infinite" then
-            a = i
+            a = "Act" .. actNumber
         end
     end
     if nextstage == "Stage3" and a == "Act6" then
@@ -819,7 +1027,7 @@ function getnextmaplegend()
     end
 end
 
-function joinstage(stage, act)
+function joinstage(stage, act, mode)
     for i,v in pairs(Workspace.MainLobby.Lobby.Stories:GetChildren()) do
         if checkplayerin(v.Teleport) == false then
             local args = {
@@ -832,7 +1040,7 @@ function joinstage(stage, act)
             local args = {
                 [1] = "Confirm",
                 [2] = {
-                    [1] = "Story",
+                    [1] = mode,
                     [2] = stage,
                     [3] = act,
                     [4] = "Normal",
@@ -857,6 +1065,14 @@ spawn(function()
     writefile("TimeBanner.txt", tostring(gettimebanner() + tick()))
 end)
 
+spawn(function()
+    writefile("can_next_map.txt", "DeoDuocNehjhj")
+end)
+
+spawn(function()
+    writefile("farm_crystal.txt", "DeoDuocNehjhj")
+end)
+
 function main()
     if getmoney() > 500 and getgenv().nomorebanner ~= true then
         print("Unit : ", getgenv().unitinbanner)
@@ -874,34 +1090,59 @@ function main()
         getgenv().nomorebanner = true
     else
         -- if getlevel() > 30 then
-            for i,v in pairs(getgenv().config.combo_auto_igris) do
-                local getbest = getbestunit(v)
-                if getbest ~= nil then
-                    equipunit(getbest[1])
-                    if getbest[2].Level < 50 and v ~= "Sprintwagon" then
-                        if (v == "Alligator" and getbest[2].Level < 30) or v ~= "Alligator" then
-                            findandfeed(getbest[1])
-                            getgenv().notfulllvl = true
+            if getgenv().notfulllvl == nil and getgenv().ditmevailon == nil then
+                for i,v in pairs(getgenv().config.combo_auto_igris) do
+                    local getbest = getbestunit(v)
+                    if getbest ~= nil then
+                        equipunit(getbest[1])
+                        if getbest[2].Level < 50 and v ~= "Sprintwagon" then
+                            if (v == "Alligator" and getbest[2].Level < 30) or v ~= "Alligator" then
+                                findandfeed(getbest[1])
+                                getgenv().notfulllvl = true
+                            end
                         end
+                    else
+                        getgenv().ditmevailon = true
+                        equipunit(getbestunit("Roku")[1])
                     end
-                else
-                    getgenv().ditmevailon = true
-                    equipunit(getbestunit("Roku")[1])
+                    wait(2)
                 end
-                wait(2)
+                getgenv().notfulllvl = false
             end
             if getgenv().ditmevailon == true then
-                joinstage("Stage1", "Act1")
+                joinstage("Stage1", "Act1", "Story")
                 return
             end
             if getgenv().ditmevailon ~= true and getgenv().notfulllvl == true then
-                joinstage("Stage1", "Act2")
+                joinstage("Stage1", "Act2", "Story")
                 getgenv().stop = true
             else
+                spawn(function()
+                    writefile("can_next_map.txt", "Duocnekhjhj")
+                end)
                 if getnextmap() == false then
-                    joinstage(getnextstage(), getnextmap())
+                    joinstage(getnextstage(), getnextmap(), "Story")
                 else
-                    joinstage(legenstage(), getnextmap())
+                    local awakenne = awakenvegeta()
+                    if awakenne == nil then
+                        return
+                    end
+                    if awakenne == false then
+                        joinstage(legenstage(), getnextmap(), "LegendStage")
+                    else
+                        if awakenne == "NeedBean" then
+                            joinstage("Stage1", "Act1" , "Story")
+                            return
+                        end
+                        if legenstage() == "Stage3" and awakenne == "NeedGreen" then
+                            spawn(function()
+                                writefile("farm_crystal.txt", "Duocnekhjhj")
+                            end)
+                            joinstage("Stage2", "Act1", "LegendStage")
+                        else
+                            joinstage(legenstage(), getnextmap(), "LegendStage")
+                        end
+                    end
                 end
             end
         -- else
