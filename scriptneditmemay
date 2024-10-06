@@ -1092,8 +1092,63 @@ spawn(function()
     end
 end)
 
+--- function custom remove()
+function getfkingunit()
+    local a = 0
+    for i,v in pairs(getunit()) do
+        a = a + 1
+    end
+    return a
+end
+
+function getunitsell()
+    local allunit = {}
+    for i,v in pairs(getunit()) do
+        if v.UnitData.Rarity ~= "Mythic" and v.UnitData.Name ~= "Sprintwagon" and v.UnitData.Name ~= "Alligator" then
+            table.insert(allunit, i)
+        end
+    end
+    return allunit
+end
+
+function removeunit()
+    if plr.PlayerGui.Windows.Units.Enabled == false then
+        getconnections(plr.PlayerGui.HUD.SideButtons.Buttons.Units.Button.Activated)[1]:Fire()
+        wait(1)
+    else
+        local listunit = getunitsell()
+        pcall(function()
+            getconnections(plr.PlayerGui.Windows.Units.Holder.Main.Units[listunit[1]].Button.Activated)[1]:Fire()
+        end)
+        wait(1)
+        pcall(function()
+            getconnections(plr.PlayerGui.InventoryHover.SelectedContainer[listunit[1] .. "Preview"].Main.Buttons.Sell.Button.Activated)[1]:Fire()
+        end)
+        wait(1)
+        for i,v in pairs(listunit) do 
+            pcall(function()
+                getconnections(plr.PlayerGui.Windows.Units.Holder.Main.Units[v].Button.Activated)[1]:Fire()
+            end)
+        end
+        wait(1)
+        pcall(function()
+            getconnections(plr.PlayerGui.Windows.Units.Holder.Sell.Button.Activated)[1]:Fire()
+        end)
+        wait(1)
+        pcall(function()
+            getconnections(plr.PlayerGui.Confirmation.Confirmation.Main.Yes.Button.Activated)[1]:Fire()
+        end)
+    end
+end
+
+---
+
 function main()
     if getmoney() > 500 and getgenv().nomorebanner ~= true then
+        if getfkingunit() > 90 then
+            removeunit()
+            return
+        end        
         print("Unit : ", getgenv().unitinbanner)
         if getgenv().unitinbanner == nil then
             gethigher()
