@@ -24,7 +24,7 @@ function loadscript()
     }
 }
 
-getgenv().recmacro = false
+getgenv().recmacro = true
 repeat wait() until game:IsLoaded()
 local plr = cloneref(game.Players.LocalPlayer)
 local StartPlayer = cloneref(game:GetService("StarterPlayer"))
@@ -792,14 +792,20 @@ function craftitem(name)
         }
         
         Storage.Networking.State.CraftingEvent:FireServer(unpack(args))
+        return
     else
         return "NeedGreen"
     end
 end
 
 function awakenvegeta()
+    getgenv().cantawake = false
+    if haveinlist("Vogita Super (Awakened)") then
+        return false
+    end
     for i,v in pairs(datacraft) do
         if checkitemAM(i, v) == false then
+            print(i)
             getgenv().cantawake = true
             if string.find(i, "Stone") and i ~= "Rainbow Essence Stone" then
                 if i ~= "Green Essence Stone" then
@@ -816,8 +822,8 @@ function awakenvegeta()
                     return "NeedBean"
                 end
             elseif i == "Rainbow Essence Stone" then
-                if checkitemAM("Rainbow Essence Stone", 1) == true then
-                    
+                if checkitemAM("Rainbow Essence Stone", 2) == true then
+                    print("Trong day")
                 else
                     if checkitemAM("Pink Essence Stone", 1) ~= true then
                         return craftitem("Pink Essence Stone")
@@ -834,25 +840,26 @@ function awakenvegeta()
                     if checkitemAM("Purple Essence Stone", 1) ~= true then
                         return craftitem("Purple Essence Stone")
                     end
-                    if checkitemAM("Rainbow Essence Stone", 1) ~= true then
-                        craftitem("Rainbow Essence Stone")
-                    end
+                    print("Craft Rainbow")
+                    return craftitem("Rainbow Essence Stone")
                 end
             end
         end
     end
-    if getgenv().cantawake == true and not haveinlist("Vogita Super (Awakened)") then
+    if getgenv().cantawake ~= true and not haveinlist("Vogita Super (Awakened)") then
         local args = {
             [1] = getbestunit("Vogita Super")[1]
         }
         
         Storage.Networking.Units.EvolveEvent:FireServer(unpack(args))
         wait(2)
-        local ts = TeleportRef
-        local p = plr
-        ts:Teleport(16146832113, p)
+        if haveinlist("Vogita Super (Awakened)") then
+            equipunit(getbestunit("Vogita Super (Awakened)")[1])
+        end
     end
-    return false
+    if haveinlist("Vogita Super (Awakened)") == true then
+        return false
+    end
 end
 
 -- find and change another legen Vogita Super (Awakened)
@@ -954,6 +961,7 @@ end
 pcall(function()
     print("Let custom")
     custommacro("https://raw.githubusercontent.com/pipipipipia23/aahsdasd-/refs/heads/main/NextMap3", "NextMap3")
+    custommacro("https://raw.githubusercontent.com/pipipipipia23/aahsdasd-/refs/heads/main/LastMap", "LastMap")
 end)
 -- auto
 local plr = game.Players.LocalPlayer
@@ -1089,7 +1097,7 @@ function main()
             end
         end
         getgenv().nomorebanner = true
-    else
+    else 
         -- if getlevel() > 30 then
             if getgenv().notfulllvl == nil and getgenv().ditmevailon == nil then
                 for i,v in pairs(getgenv().config.combo_auto_igris) do
@@ -1131,7 +1139,8 @@ function main()
                     end
                     if awakenne == false then
                         print("CA2")
-                        joinstage(legenstage(), getnextmap(), "LegendStage")
+                        print(legenstage(), getnextmaplegend(),"LegendStage")
+                        joinstage(legenstage(), getnextmaplegend(), "LegendStage")
                     else
                         if awakenne == "NeedBean" then
                             spawn(function()
