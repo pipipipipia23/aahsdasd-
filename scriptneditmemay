@@ -991,6 +991,7 @@ function getnextmap()
         if i ~= "Infinite" then
             local actNumber = i:gsub("Act", "")
             if tonumber(actNumber) > num then
+                num = tonumber(actNumber)
                 a = "Act" .. actNumber
             end
         end
@@ -1017,6 +1018,7 @@ function getnextmaplegend()
     for i,v in pairs(LobbyHandler.PlayerData.Stages.LegendStage[nextstage]) do
         local actNumber = i:gsub("Act", "")
         if tonumber(actNumber) > num and i ~= "Infinite" then
+            num = tonumber(actNumber)
             a = "Act" .. actNumber
         end
     end
