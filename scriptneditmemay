@@ -216,6 +216,7 @@ function abc()
                 game:Shutdown()
             end
         elseif gamedata.Stage == "Stage3" and gamedata.StageType == "LegendStage" then
+            getgenv().deoduocout = true
             local a,b = pcall(function()
                 print("Danh boss")
                 getgenv().loadmacro = HttpService:JSONDecode(readfile("LastMap.txt"))
@@ -307,7 +308,7 @@ spawn(function()
             end
             if plr.PlayerGui.EndScreen.Container.Visible == true and plr.PlayerGui.EndScreen.Enabled == true then
                 index = 1
-                if getmoney() >= 15000 and tick() > tonumber(getgenv().timebanner) then
+                if getmoney() >= 15000 and tick() > tonumber(getgenv().timebanner) and getgenv().deoduocout ~= true then
                     spawn(function()
                         local ts = TeleportRef
                         local p = plr
@@ -318,7 +319,7 @@ spawn(function()
                 if getgenv().nextmap == true then
                     print("Duoc ne dit me asdasdsadsadsad")
                     if plr.PlayerGui.EndScreen.Container.EndScreen.Main.FailedLabel.Visible == false then
-                        if getgenv().farmcrystall == false then
+                        if getgenv().farmcrystall == false and getgenv().deoduocout ~= true then
                             spawn(function()
                                 local ts = TeleportRef
                                 local p = plr
