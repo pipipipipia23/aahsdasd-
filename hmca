@@ -1,0 +1,384 @@
+if game.PlaceId ~= 18901165922 then return end
+getgenv().config = {
+    mailname = "anhdangpuan03",
+    soluong = 40,
+}
+
+-- Wait until necessary services are available
+repeat wait() until game.Players and game.Players.LocalPlayer and game.ReplicatedStorage
+
+-- Anti-AFK
+local vu = game:GetService("VirtualUser")
+game.Players.LocalPlayer.Idled:connect(function()
+    vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    wait(1)
+    vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+-- Prevent specific server events
+-- local old
+-- old = hookmetamethod(game, "__namecall", function(...)
+--     local self, arg = ...
+--     if not checkcaller() and getnamecallmethod() == "FireServer" and 
+--        (tostring(self) == "__BLUNDER" or tostring(self) == "Idle Tracking: Update Timer" or tostring(self) == "Move Server") then
+--         return
+--     end
+--     return old(...)
+-- end)
+
+-- Stop idle timer
+game.ReplicatedStorage.Network["Idle Tracking: Stop Timer"]:FireServer()
+
+-- Reduce visual elements for better FPS
+setfpscap(4)
+pcall(function()
+    for i,v in next, workspace:GetDescendants() do
+        pcall(function()
+            v.Transparency = 1
+        end)
+    end
+    for i,v in next, getnilinstances() do
+        pcall(function()
+            v.Transparency = 1
+            for i1,v1 in next, v:GetDescendants() do
+                v1.Transparency = 1
+            end
+        end)
+    end
+    local decalsyeeted = true -- Leaving this on makes games look shitty but the fps goes up by at least 20.
+    local g = game
+    local w = g.Workspace
+    local l = g.Lighting
+    local t = w.Terrain
+    sethiddenproperty(l,"Technology",2)
+    sethiddenproperty(t,"Decoration",false)
+    t.WaterWaveSize = 0
+    t.WaterWaveSpeed = 0
+    t.WaterReflectance = 0
+    t.WaterTransparency = 0
+    l.GlobalShadows = 0
+    l.FogEnd = 9e9
+    l.Brightness = 0
+    settings().Rendering.QualityLevel = "Level01"
+    for i, v in pairs(w:GetDescendants()) do
+        if v:IsA("BasePart") and not v:IsA("MeshPart") then
+            v.Material = "Plastic"
+            v.Reflectance = 0
+        elseif (v:IsA("Decal") or v:IsA("Texture")) and decalsyeeted then
+            v.Transparency = 1
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        elseif v:IsA("Explosion") then
+            v.BlastPressure = 1
+            v.BlastRadius = 1
+        elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+            v.Enabled = false
+        elseif v:IsA("MeshPart") and decalsyeeted then
+            v.Material = "Plastic"
+            v.Reflectance = 0
+            v.TextureID = 10385902758728957
+        elseif v:IsA("SpecialMesh") and decalsyeeted  then
+            v.TextureId=0
+        elseif v:IsA("ShirtGraphic") and decalsyeeted then
+            v.Graphic=0
+        elseif (v:IsA("Shirt") or v:IsA("Pants")) and decalsyeeted then
+            v[v.ClassName.."Template"]=0
+        end
+    end
+    for i = 1,#l:GetChildren() do
+        e=l:GetChildren()[i]
+        if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
+            e.Enabled = false
+        end
+    end
+    w.DescendantAdded:Connect(function(v)
+        wait()--prevent errors and shit
+        if v:IsA("BasePart") and not v:IsA("MeshPart") then
+            v.Material = "Plastic"
+            v.Reflectance = 0
+        elseif v:IsA("Decal") or v:IsA("Texture") and decalsyeeted then
+            v.Transparency = 1
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        elseif v:IsA("Explosion") then
+            v.BlastPressure = 1
+            v.BlastRadius = 1
+        elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+            v.Enabled = false
+        elseif v:IsA("MeshPart") and decalsyeeted then
+            v.Material = "Plastic"
+            v.Reflectance = 0
+            v.TextureID = 10385902758728957
+        elseif v:IsA("SpecialMesh") and decalsyeeted then
+            v.TextureId=0
+        elseif v:IsA("ShirtGraphic") and decalsyeeted then
+            v.ShirtGraphic=0
+        elseif (v:IsA("Shirt") or v:IsA("Pants")) and decalsyeeted then
+            v[v.ClassName.."Template"]=0
+        end
+    end)
+end)
+
+game:GetService("RunService"):Set3dRenderingEnabled(false)
+
+for k,v in getrunningscripts() do 
+    if tostring(v) == "Script" then
+        v:Destroy()
+    end
+end
+
+-- Function definitions
+local a = require(game:GetService("ReplicatedStorage").Library.Directory.Upgrades)
+local plr = game.Players.LocalPlayer
+local v3 = require(game.ReplicatedStorage.Library.Client.CurrencyCmds)
+
+function data()
+    return require(game:GetService("ReplicatedStorage").Library.Client.Save).Get()
+end
+
+function getasdu()
+    for i, v in pairs(data().Inventory.Misc) do
+        if string.find(v.id, "Crystal Key") or v.id == "Secret Key" then
+            return {i, v._am}
+        end
+    end
+    return false
+end
+
+function chest()
+    for i, v in pairs(data().Inventory.Lootbox) do
+        if v.id == "Exclusive Treasure Chest" then
+            return {i, true}
+        elseif string.find(v.id, "Chest") and v._am then
+            if v._am >= 5 then
+                return {i}
+            end
+        end
+    end
+    return false
+end
+
+function giun()
+    for i, v in pairs(data().Inventory.Consumable) do
+        if v.id == "Exclusive Fishing Bait" then
+            return {i, true}
+        elseif string.find(v.id, "Bait") and v._am then
+            if v._am >= 5 then
+                return {i}
+            end
+        end
+    end
+    return false
+end
+
+-- Teleport to position if far from target
+
+-- Tạo một Part mới
+local part = Instance.new("Part")
+part.Size = Vector3.new(4, 1, 4)  -- Kích thước của Part, có thể điều chỉnh theo nhu cầu
+part.Position = Vector3.new(-207.0876, 0.02447, 208.5679)
+part.Color = Color3.new(1, 0, 0)  -- Đặt màu đỏ (RGB: 1, 0, 0)
+part.Anchored = true              -- Giúp Part cố định tại chỗ, không rơi xuống
+part.Parent = game.Workspace       -- Đặt Part vào trong Workspace để hiển thị trong game
+
+local targetPosition = Vector3.new(-207.0876, 2.0245, 208.568)
+if (plr.Character.HumanoidRootPart.Position - targetPosition).Magnitude > 10 then
+    plr.Character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+end
+
+function noclip()
+	if not game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("BodyClip") then
+		local Noclip = Instance.new("BodyVelocity")
+		Noclip.Name = "BodyClip"
+		Noclip.Parent = game.Players.LocalPlayer.Character.HumanoidRootPart
+		Noclip.MaxForce = Vector3.new(100000,100000,100000)
+		Noclip.Velocity = Vector3.new(0,0,0)
+	end
+end
+
+noclip()
+
+-- Destroy unwanted elements
+for _, v in pairs(workspace.MAP:GetChildren()) do
+    if v.Name ~= "INTERACT" then
+        v:Destroy()
+    end
+end
+
+workspace.OUTER:Destroy()
+workspace["__THINGS"].Breakables:Destroy()
+-- workspace["__THINGS"].Pets:Destroy()
+
+-- Auto Upgrade
+function getcoin()
+    if (plr.Character.HumanoidRootPart.Position - targetPosition).Magnitude > 10 then
+        plr.Character.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+    end
+    for i, v in pairs(a) do
+        if not table.find(data().UpgradesPurchased, i) and v.Price then
+            for _, price in pairs(v.Price) do
+                if price._data.id == "Fishing Token" or 
+                   (price._data.id == "Coins" and v3.Get("Coins") >= price._data._am) then
+                    game.ReplicatedStorage.Network.Upgrades_Purchase:InvokeServer(i)
+                end
+            end
+        end
+    end
+end
+
+-- Periodic coin collection
+spawn(function()
+    while wait(60) do
+        pcall(getcoin)
+    end
+end)
+
+-- Sending mail function
+function sendmail(name, type1, id, soluong)
+    if name == plr.Name then return end
+    game.ReplicatedStorage.Network["Mailbox: Send"]:InvokeServer(name, "asdasasddsadsadad", type1, id, soluong)
+end
+
+-- Item collection and mail sending
+spawn(function()
+    while wait(10) do
+        pcall(function()
+            spawn(function()
+                local args = {
+                    [1] = "Default"
+                }
+                
+                game:GetService("ReplicatedStorage").Network:FindFirstChild("ForeverPacks: Claim Free"):InvokeServer(unpack(args))
+                
+                local args = {
+                    [1] = "PotionVendingMachine"
+                }
+                
+                game:GetService("ReplicatedStorage").Network.VendingMachines_Purchase:InvokeServer(unpack(args))
+            end)
+            for i = 1, 6 do
+                local args = {
+                    [1] = "StandardMerchant",
+                    [2] = i
+                }
+                
+                game:GetService("ReplicatedStorage").Network.CustomMerchants_Purchase:InvokeServer(unpack(args))                
+            end
+
+            local data = getasdu()
+            if data then sendmail(config.mailname, "Misc", data[1], data[2]) end
+        end)
+    end
+end)
+
+spawn(function()
+    while wait(2) do
+        pcall(function()
+            for i = 1, 6 do
+                game.ReplicatedStorage.Network.CustomMerchants_Purchase:InvokeServer("FishingMerchant", i)
+            end
+        end)
+    end
+end)
+
+spawn(function()
+    while wait(1) do
+        pcall(function()
+            local chestData = chest()
+            if chestData then
+                if chestData[2] then
+                    sendmail(config.mailname, "Lootbox", chestData[1], 1)
+                else
+                    game.ReplicatedStorage.Network["Lootbox: Open"]:InvokeServer(chestData[1], 5)
+                end
+            end
+
+            local baitData = giun()
+            if baitData then
+                if baitData[2] then
+                    sendmail(config.mailname, "Consumable", baitData[1], 1)
+                else
+                    game.ReplicatedStorage.Network.Consumables_Consume:InvokeServer(baitData[1], 5)
+                end
+            end
+        end)
+    end
+end)
+
+-- Auto-collect orbs
+spawn(function()
+    while task.wait(0.5) do
+        pcall(function()
+            for _, orb in pairs(workspace["__THINGS"].Orbs:GetChildren()) do
+                game.ReplicatedStorage.Network["Orbs: Collect"]:FireServer({tonumber(orb.Name)})
+                orb:Destroy()
+            end
+        end)
+    end
+end)
+
+local Client = require(game:GetService("ReplicatedStorage").Library.Client.PetCmds)
+local az = getsenv(game.Players.LocalPlayer.PlayerScripts.Scripts.Game["Breakables Frontend"])
+
+function getdig()
+    local a = require(game:GetService("ReplicatedStorage").Library.Client.DiggingCmds)
+    if not game:GetService("Workspace")["__THINGS"].Digging:FindFirstChild("DigPart") then
+        return {uid = "12312"}
+    end
+    local v52, v53 = a.GetNearest(game:GetService("Workspace")["__THINGS"].Digging.DigPart.Position);
+    return v52
+end
+
+spawn(function()
+    while wait(1) do
+        local a,b = pcall(function()
+            local breakables = getupvalues(az.getBreakable)[1]
+            setthreadidentity(2)
+            local Pets = Client.GetEquipped()
+            setthreadidentity(7)
+            local strongestBreakable
+            local maxHealth = 0
+
+            -- Tìm breakable có MaxHealth cao nhất
+            for _, breakable in pairs(breakables) do
+                if breakable.maxHealth > maxHealth then
+                    maxHealth = breakable.maxHealth
+                    strongestBreakable = breakable
+                end
+            end
+            local dig = getdig()
+            if dig.uid ~= "12312" then
+                for _, pet in pairs(Pets) do
+                    local args = {
+                        [1] = tonumber(dig.uid),
+                        [2] = pet.euid
+                    }
+                    
+                    game:GetService("ReplicatedStorage").Network.Digging_Target:InvokeServer(unpack(args))           
+                    wait(2)
+                    local args = {
+                        [1] = tonumber(dig.uid)
+                    }
+                    
+                    game:GetService("ReplicatedStorage").Network.Digging_Claim:InvokeServer(unpack(args))                    
+                end
+            end
+
+            if strongestBreakable then
+                local args = {}
+                for _, pet in pairs(Pets) do
+                    args[pet.euid] = tonumber(strongestBreakable.uid)
+                end
+                game:GetService("ReplicatedStorage").Network.Breakables_JoinPetBulk:FireServer(args)
+            end
+        end)
+        print(a,b)
+    end
+end)
+
+-- Auto hatch eggs
+spawn(function()
+    while task.wait(0.5) do
+        game.ReplicatedStorage.Network.Eggs_Roll:InvokeServer()
+    end
+end)
