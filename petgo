@@ -1,14 +1,16 @@
 getgenv().ticka = tick()
 spawn(function()
     while true do wait(1)
-        local plr =game.Players.LocalPlayer
-        if tick() - getgenv().ticka > 60 * 10 then
-            writefile("Petgo_" .. plr.Name .. ".txt", getgenv().ticka)
-            game:Shutdown()
-        end
-        game:GetService("ReplicatedStorage").Network.Eggs_Roll:InvokeServer()
-        game:GetService("Players").LocalPlayer.PlayerGui.Notifications:Destroy()
-        game:GetService("Players").LocalPlayer.PlayerGui.Message:Destroy()
-        game:GetService("Players").LocalPlayer.PlayerGui.Changelog:Destroy()
+        pcall(function()
+            local plr =game.Players.LocalPlayer
+            if tick() - getgenv().ticka > 60 * 10 then
+                writefile("Petgo_" .. plr.Name .. ".txt", getgenv().ticka)
+                game:Shutdown()
+            end
+            game:GetService("ReplicatedStorage").Network.Eggs_Roll:InvokeServer()
+            game:GetService("Players").LocalPlayer.PlayerGui.Notifications:Destroy()
+            game:GetService("Players").LocalPlayer.PlayerGui.Message:Destroy()
+            game:GetService("Players").LocalPlayer.PlayerGui.Changelog:Destroy()
+        end)
     end
 end)
