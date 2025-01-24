@@ -9,5 +9,6 @@ spawn(function()
         game:GetService("ReplicatedStorage").Network.Eggs_Roll:InvokeServer()
         game:GetService("Players").LocalPlayer.PlayerGui.Notifications:Destroy()
         game:GetService("Players").LocalPlayer.PlayerGui.Message:Destroy()
+        game:GetService("Players").LocalPlayer.PlayerGui.Changelog:Destroy()
     end
 end)
