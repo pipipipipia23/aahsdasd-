@@ -1,0 +1,98 @@
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local activeTween
+local options = {
+      removeTweenWhenReached = false, -- << Loại bỏ tất cả vận tốc khi đến mục tiêu, để người chơi không bị trôi nổi trên không.
+      speed = 350 -- << Tốc độ tối đa của Tween (350 là tốc độ nhanh nhất mà không bị teleported lại).
+}
+local function TweenTo(target, options)
+   options = options or {}
+   local removeTweenWhenReached = options.removeTweenWhenReached
+   local speed = options.speed
+   local character = LocalPlayer.Character
+   if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+   local rootPart = character.HumanoidRootPart
+   local targetPosition
+   if typeof(target) == "CFrame" then
+       targetPosition = target.Position
+   elseif typeof(target) == "Vector3" then
+       targetPosition = target
+   elseif typeof(target) == "Instance" then
+       if target:IsA("Model") and target:FindFirstChild("HumanoidRootPart") then
+           targetPosition = target.HumanoidRootPart.Position  
+       elseif target:IsA("Player") and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+           targetPosition = target.Character.HumanoidRootPart.Position
+       elseif target:IsA("BasePart") then
+           targetPosition = target.Position
+       else
+           return
+       end
+   else
+       return
+   end
+   if activeTween then
+       activeTween.connection:Disconnect()
+       activeTween.bodyVelocity:Destroy()
+       activeTween.bodyGyro:Destroy()
+   end
+   local distance = (rootPart.Position - targetPosition).Magnitude
+   if distance <= speed then
+       rootPart.CFrame = CFrame.new(targetPosition)
+       return
+   end
+   local direction = (targetPosition - rootPart.Position).Unit
+   local velocity = direction * speed
+   local bodyVelocity = Instance.new("BodyVelocity")
+   bodyVelocity.Velocity = velocity
+   bodyVelocity.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+   bodyVelocity.P = 1250
+   bodyVelocity.Parent = rootPart
+   local bodyGyro = Instance.new("BodyGyro")
+   bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+   bodyGyro.CFrame = CFrame.new(rootPart.Position, targetPosition)
+   bodyGyro.P = 1250
+   bodyGyro.Parent = rootPart
+   for _, part in ipairs(character:GetDescendants()) do
+       if part:IsA("BasePart") then
+           part.CanCollide = false
+       end
+   end
+   local connection = RunService.Heartbeat:Connect(function()
+       if (rootPart.Position - targetPosition).Magnitude <= speed then
+           if removeTweenWhenReached then
+               bodyVelocity:Destroy()
+               bodyGyro:Destroy()
+               connection:Disconnect()
+               activeTween = nil
+           end
+           rootPart.CFrame = CFrame.new(targetPosition)
+       else
+           bodyVelocity.Velocity = (targetPosition - rootPart.Position).Unit * speed
+           bodyGyro.CFrame = CFrame.new(rootPart.Position, targetPosition)
+       end
+   end)
+   activeTween = {
+       connection = connection,
+       bodyVelocity = bodyVelocity,
+       bodyGyro = bodyGyro
+   }
+end
+
+local function StopTween() -- << Gọi nó khi bạn muốn dừng tween.
+   if not activeTween then return end
+   activeTween.connection:Disconnect()
+   activeTween.bodyVelocity:Destroy()
+   activeTween.bodyGyro:Destroy()
+   activeTween = nil
+   local character = LocalPlayer.Character
+   if character then
+       for _, part in ipairs(character:GetDescendants()) do
+           if part:IsA("BasePart") then
+               part.CanCollide = true
+           end
+       end
+   end
+end
+
+return {TweenTo, StopTween}
