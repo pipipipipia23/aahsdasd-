@@ -37,10 +37,6 @@ local function TweenTo(target, options)
        activeTween.bodyGyro:Destroy()
    end
    local distance = (rootPart.Position - targetPosition).Magnitude
-   if distance <= speed then
-       rootPart.CFrame = CFrame.new(targetPosition)
-       return
-   end
    local direction = (targetPosition - rootPart.Position).Unit
    local velocity = direction * speed
    local bodyVelocity = Instance.new("BodyVelocity")
