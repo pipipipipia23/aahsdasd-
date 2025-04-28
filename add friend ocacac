@@ -1,5 +1,5 @@
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(20) do
         for _, v in next, game:GetService('Players'):GetPlayers() do
             if v == game.Players.LocalPlayer then continue end
             local success = pcall(function()
