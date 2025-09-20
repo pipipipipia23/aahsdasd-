@@ -1,0 +1,2038 @@
+-- ========================================================================================
+-- AUTOFINDSAM: SMART COMPASS TREASURE HUNTING SCRIPT
+-- ========================================================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local plr = player
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+local isHunting = false
+
+function EequipSam()
+    if plr.Character:FindFirstChild("Compass") then
+        local compassArrow = plr.Character.Compass:FindFirstChild("CompassArrow")
+        if compassArrow then
+            local success, _ = pcall(function()
+                return compassArrow.Rotation
+            end)
+            
+            if success then
+                return true
+            end
+        end
+    end
+    
+    local foundCompass = false
+    local compassTool = nil
+    
+    for i, v in pairs(plr.Backpack:GetChildren()) do
+        if v.Name == "Compass" then
+            isHunting = true
+            compassTool = v
+            foundCompass = true
+            break
+        end
+    end
+    
+    if not foundCompass then
+        return false
+    end
+    
+    plr.Character.Humanoid:EquipTool(compassTool)
+    
+    local verifyAttempts = 0
+    local maxVerifyAttempts = 50  -- Tăng số lần thử lên nhiều hơn
+    local verifySuccess = false
+    
+    print("⏳ Verifying compass equipment...")
+    
+    while verifyAttempts < maxVerifyAttempts and not verifySuccess do
+        verifyAttempts = verifyAttempts + 1
+        task.wait(0.5)
+        
+        if verifyAttempts % 10 == 0 then
+            print("⏳ Still verifying compass... Attempt #" .. verifyAttempts)
+        end
+        
+        if plr.Character:FindFirstChild("Compass") then
+            local compassArrow = plr.Character.Compass:FindFirstChild("CompassArrow")
+            if compassArrow then
+                local success, _ = pcall(function()
+                    return compassArrow.Rotation
+                end)
+                
+                if success then
+                    verifySuccess = true
+                    break
+                end
+            end
+        end
+    end
+    
+    if verifySuccess then
+        compass = plr.Character.Compass
+        return true
+    else
+        return false
+    end
+end
+
+-- Auto-click function with minimal code
+spawn(function()
+    while not _G.stopclick do 
+        task.wait(0.1)
+        EequipSam()
+        game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+    end
+end)
+
+-- Optimized compass reference
+local compass
+local function getCompass()
+    if not character or not character.Parent then
+        character = player.Character
+        if not character then
+            return nil
+        else
+            humanoid = character:WaitForChild("Humanoid")
+            rootPart = character:WaitForChild("HumanoidRootPart")
+        end
+    end
+    
+    if not character:FindFirstChild("Compass") then
+        return nil
+    end
+    
+    local compassFolder = character.Compass
+    if not compassFolder:FindFirstChild("CompassArrow") then
+        return nil
+    end
+    
+    local compassArrow = compassFolder.CompassArrow
+    
+    local success = pcall(function()
+        local _ = compassArrow.Rotation
+    end)
+    
+    if not success then
+        return nil
+    end
+    
+    return compassArrow
+end
+
+-- Wait for compass with unlimited retries
+local function waitForCompass()
+    local attempts = 0
+    -- Thay thế giới hạn cố định bằng math.huge (vô hạn)
+    local maxAttempts = math.huge
+    
+    print("⏳ Waiting for compass with unlimited retries...")
+    
+    while not getCompass() do
+        attempts = attempts + 1
+        
+        if attempts % 20 == 0 then
+            print("⏳ Still waiting for compass... Attempt #" .. attempts)
+        end
+        
+        task.wait(1)
+        
+        if player.Character and player.Character ~= character then
+            character = player.Character
+            rootPart = character:WaitForChild("HumanoidRootPart")
+            humanoid = character:WaitForChild("Humanoid")
+        end
+    end
+    
+    print("✅ Compass acquired after " .. attempts .. " attempts!")
+    
+    -- Auto-restart hunting if we have a compass but aren't hunting
+    if not isHunting then
+        print("🔄 Auto-restarting hunt after getting compass...")
+        task.delay(1, function()
+            smartCompassHunt()
+        end)
+    end
+    
+    compass = getCompass()
+    return compass
+end
+
+compass = waitForCompass()
+
+-- === CONFIGURATION ===
+local SPEED = 800  -- Tăng tốc độ chung lên 800
+
+-- ========================================================================================
+-- CONFIG SETTINGS - Điều chỉnh các giá trị này để tùy chỉnh hoạt động
+-- ========================================================================================
+local CONFIG = {
+    -- Speed settings
+    SPEED = 800,                    -- Tốc độ di chuyển chung
+    SPEED_STRAIGHT = 800,           -- Tốc độ khi đi thẳng
+    SPEED_SEARCHING = 600,          -- Tốc độ khi tìm kiếm
+    SPEED_APPROACHING = 14,         -- Tốc độ khi tiếp cận mục tiêu
+    
+    -- Flight settings
+    VERTICAL_SPEED = 1000,          -- Tốc độ bay lên trời (siêu nhanh, không bị anti-cheat)
+    
+    -- Detection settings
+    DETECTION_DISTANCE = 8,         -- Khoảng cách phát hiện spawner
+    STRAIGHT_TOLERANCE = 10,        -- Dung sai góc cho chế độ đi thẳng 
+    SEARCH_TOLERANCE = 18,          -- Dung sai góc cho chế độ tìm kiếm
+    
+    -- Scan settings
+    LOCAL_SCAN_RADIUS = 180,        -- Bán kính quét cục bộ (studs)
+    GLOBAL_SCAN_RADIUS = 600,       -- Bán kính quét toàn cầu (studs)
+    
+    -- Step settings (đã giảm xuống cho độ chính xác cao)
+    STEP_STRAIGHT = 10,             -- Kích thước bước khi đi thẳng (giảm từ 45)
+    STEP_SEARCH = 5,                -- Kích thước bước khi tìm kiếm (giảm từ 12)
+    
+    -- Safety settings
+    SAFE_ALTITUDE = 3000,           -- Độ cao an toàn để bay
+    COMPASS_FLIP_THRESHOLD = 120,   -- Ngưỡng (độ) để phát hiện lật la bàn
+    REVERSE_TIMEOUT = 30,           -- Thời gian tối đa (giây) trong chế độ REVERSING
+    
+    -- Reverse movement settings  
+    REVERSE_STEP = 5,               -- Kích thước bước khi đi lùi (giảm từ 30)
+    REVERSE_WRONGWAY_THRESH = 45,   -- Lệch khỏi mũi tên ngược > 45° coi là sai
+    REVERSE_BAD_PROGRESS = 6,       -- "Tiến độ" tệ hơn >6° coi là xấu
+    REVERSE_BAD_STREAK = 2,         -- Số bước liên tiếp xấu để sửa hướng
+    
+    -- Spawner settings
+    RADIUS_STEPS_LOCAL = {10, 15, 20, 25, 50},  -- Các nấc bán kính quét spawner (studs)
+    SPAWNER_NAME_HINTS = {"spawner"}  -- Từ khóa để tìm spawner
+}
+
+-- ========================================================================================
+-- GLOBAL STATE - Biến trạng thái toàn cục
+-- ========================================================================================
+-- GLOBAL namespace for cross-function state
+GLOBAL = {
+    reverseTimeout = nil          -- Timeout reference for reverseMovement
+}
+
+-- Hunt state
+_G.directionMode = 1              -- Chế độ hướng: 1 = LookVector, 2-5 = Y Rotation
+huntState = "FORWARD"             -- Trạng thái săn: FORWARD, REVERSING, FOUND, SAFE_MODE
+currentTween = nil                -- Tween di chuyển hiện tại
+huntConnection = nil              -- Kết nối sự kiện săn
+
+-- Compass tracking
+local lastCompassAngle = 0
+local compassHistory = {}
+
+-- Movement
+local noclipEnabled = false
+local movementState = "SEARCHING"
+local overshootDetected = false
+local lastPlayerPosition = nil
+local directionHistory = {}
+
+-- Scan cache
+local scanCache = {}
+local lastScanTime = 0
+local currentTarget = nil
+
+-- Reverse tracking
+local lastDirection = Vector3.new(0, 0, 0)
+local reverseStartPosition = Vector3.new(0, 0, 0)
+local wrongSteps = 0
+local prevAngleSample = nil
+
+-- Monitoring
+local isMonitoringCompass = false
+
+function getCompassDirection()
+    local compass = getCompass()
+    if not compass or not compass.Parent then
+        return nil
+    end
+    
+    if not character:FindFirstChild("Compass") or not character.Compass:FindFirstChild("CompassArrow") then
+        return nil
+    end
+    
+    local success, rotation = pcall(function()
+        return compass.Rotation
+    end)
+    
+    if not success then
+        return nil
+    end
+    
+    local lv = compass.CFrame.LookVector
+    local angle = math.deg(math.atan2(lv.X, -lv.Z))
+    while angle < 0 do angle = angle + 360 end
+    while angle >= 360 do angle = angle - 360 end
+    
+    return angle
+end
+
+function performSafetyCheck()
+    local compassAngle = getCompassDirection()
+    
+    if compassAngle == nil then
+        print("⚠️ SAFETY CHECK FAILED: Compass not working properly")
+        print("⚠️ Entering safe mode - staying at altitude " .. CONFIG.SAFE_ALTITUDE)
+        
+        -- Move to safe altitude and stop
+        local currentPos = rootPart.Position
+        local safePosition = Vector3.new(currentPos.X, CONFIG.SAFE_ALTITUDE, currentPos.Z)
+        rootPart.CFrame = CFrame.new(safePosition)
+        
+        -- Lưu trạng thái hiện tại trước khi đặt thành SAFE_MODE
+        local previousState = huntState
+        
+        -- Stop all hunting activities
+        isHunting = false
+        huntState = "SAFE_MODE"
+        
+        -- Thử tự động trang bị lại compass ngay lập tức
+        print("🔄 Attempting immediate compass recovery...")
+        local equippedCompass = EequipSam()
+        
+        if equippedCompass then
+            -- Thử ngay lập tức kiểm tra xem compass mới có hoạt động không
+            compass = getCompass()
+            if compass then
+                local newAngle = getCompassDirection()
+                if newAngle then
+                    print("✅ INSTANT RECOVERY: Compass replaced and working!")
+                    print("🧭 New compass angle: " .. math.floor(newAngle) .. "°")
+                    
+                    -- Khôi phục trạng thái săn
+                    huntState = previousState
+                    isHunting = true
+                    
+                    -- Thiết lập lại các kết nối compass
+                    bindCompassSignal()
+                    compassHistory = {}
+                    
+                    -- Thông báo khôi phục thành công
+                    print("🔄 Hunt resumed with new compass")
+                    return true
+                end
+            end
+        end
+        
+        -- Nếu không khôi phục ngay lập tức được, lên lịch kiểm tra phục hồi vô hạn
+        print("⏳ Immediate recovery failed, starting unlimited recovery attempts...")
+        
+        task.spawn(function()
+            local recoveryAttempts = 0
+            -- Thay thế giới hạn cố định bằng vô hạn
+            local maxRecoveryAttempts = math.huge
+            
+            while huntState == "SAFE_MODE" do
+                task.wait(2) -- Kiểm tra thường xuyên hơn (2s thay vì 3s)
+                recoveryAttempts = recoveryAttempts + 1
+                
+                if recoveryAttempts % 10 == 0 then
+                    print("🔄 Still trying to recover compass... Attempt #" .. recoveryAttempts)
+                end
+                
+                -- Thử trang bị lại compass
+                local equipped = EequipSam()
+                if not equipped then
+                    print("❌ Failed to equip compass, trying again...")
+                    continue
+                end
+                
+                -- Đợi để đảm bảo compass được khởi tạo đầy đủ
+                task.wait(0.5)
+                
+                -- Cập nhật tham chiếu compass mới
+                compass = getCompass()
+                if not compass then
+                    print("❌ Failed to get compass reference, trying again...")
+                    continue
+                end
+                
+                -- Thử lấy góc từ compass mới
+                local newAngle = getCompassDirection()
+                if not newAngle then
+                    print("❌ Compass equipped but not functioning, trying again...")
+                    continue
+                end
+                
+                print("✅ RECOVERED! Compass working again!")
+                print("🧭 New compass angle: " .. math.floor(newAngle) .. "°")
+                
+                -- Khôi phục trạng thái và tiếp tục săn
+                huntState = "FORWARD" -- Luôn tiếp tục từ FORWARD để an toàn
+                isHunting = true
+                
+                -- Thiết lập lại các kết nối compass
+                bindCompassSignal()
+                compassHistory = {}
+                
+                -- Tiếp tục săn sau 1 giây
+                task.wait(1)
+                forwardMovement()
+                return true
+            end
+        end)
+        
+        return false
+    end
+    
+    return true
+end
+
+function getAdaptiveSpeed()
+    local stepSize = getMovementInfo()
+    return SPEED, stepSize
+end
+
+local function _setDir(mode)
+    if type(mode) ~= "number" or mode < 1 or mode > 4 then
+        return
+    end
+    _G.directionMode = mode
+end
+_G.useDirection = _setDir
+useDirection = _setDir
+
+local function bindCompassSignal()
+    if huntConnection then
+        huntConnection:Disconnect()
+        huntConnection = nil
+    end
+    if not compass then return end
+    huntConnection = compass:GetPropertyChangedSignal("CFrame"):Connect(function()
+        if not isHunting then return end
+        local newAngle = getCompassDirection()
+        local angleDiff = math.abs(newAngle - lastCompassAngle)
+        if angleDiff > 10 then
+            lastCompassAngle = newAngle
+            if angleDiff > 30 and currentTween and movementState == "STRAIGHT" then
+                currentTween:Stop()
+                overshootDetected = true
+                huntStep()
+            end
+        end
+    end)
+end
+
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid = char:WaitForChild("Humanoid")
+    rootPart = char:WaitForChild("HumanoidRootPart")
+    
+    print("🔄 Character respawned! Setting up new character...")
+    
+    -- Wait a moment for everything to initialize
+    task.wait(2)
+    
+    -- Try to get compass
+    local equipSuccess = EequipSam()
+    if equipSuccess then
+        compass = getCompass()
+        if compass then
+            print("✅ Successfully equipped compass after respawn")
+            bindCompassSignal()
+            
+            -- Resume hunting if it was active before
+            if huntState ~= "SAFE_MODE" then
+                print("🚀 Resuming hunt after respawn!")
+                compassHistory = {}
+                isHunting = true
+                huntState = "FORWARD"
+                
+                -- Start hunting after a short delay
+                task.delay(1, function()
+                    smartCompassHunt()
+                end)
+            else
+                print("⚠️ Not resuming hunt because previously in SAFE_MODE")
+            end
+        else
+            print("⚠️ Failed to get compass after respawn despite successful equip")
+        end
+    else
+        print("⚠️ Failed to equip compass after respawn")
+    end
+end)
+
+bindCompassSignal()
+
+if not compass then
+    return
+end
+
+local SPEED_STRAIGHT = 35
+local SPEED_SEARCHING = 10
+local SPEED_APPROACHING = 14
+local DETECTION_DISTANCE = 8
+local STRAIGHT_TOLERANCE = 10
+local SEARCH_TOLERANCE = 18
+local LOCAL_SCAN_RADIUS = 180
+local GLOBAL_SCAN_RADIUS = 600
+local STEP_STRAIGHT = 45
+local STEP_SEARCH = 12
+
+local COMPASS_FLIP_THRESHOLD = 120
+
+-- ========================================================================================
+-- COMPASS MONITORING SYSTEM
+-- ========================================================================================
+function startCompassMonitoring()
+    if isMonitoringCompass then return end
+    isMonitoringCompass = true
+    
+    print("🔍 Starting compass monitoring service...")
+    
+    task.spawn(function()
+        while isMonitoringCompass do
+            task.wait(3) -- Kiểm tra compass mỗi 3 giây (tăng tần suất)
+            
+            if isHunting then
+                -- Kiểm tra compass còn hoạt động không
+                local compassCheck = getCompass()
+                if not compassCheck then
+                    print("⚠️ Compass monitor: Compass not found in character!")
+                    
+                    -- Thử trang bị lại compass
+                    local equipped = EequipSam()
+                    if equipped then
+                        print("✅ Compass monitor: Re-equipped compass successfully")
+                        
+                        -- Đảm bảo cập nhật tham chiếu đúng
+                        task.wait(0.5) -- Đợi để đảm bảo compass được khởi tạo đầy đủ
+                        
+                        -- Cập nhật các tham chiếu quan trọng
+                        compass = getCompass()
+                        if compass then
+                            print("🧭 New compass reference established")
+                            bindCompassSignal()
+                            
+                            -- Kiểm tra trạng thái
+                            if huntState == "SAFE_MODE" then
+                                -- Khôi phục từ SAFE_MODE
+                                local newAngle = getCompassDirection()
+                                if newAngle then
+                                    print("🔄 Resuming hunt from SAFE_MODE with new compass")
+                                    huntState = "FORWARD"
+                                    isHunting = true
+                                    compassHistory = {}
+                                    
+                                    -- Khởi động lại forwardMovement sau 1 giây
+                                    task.delay(1, function()
+                                        forwardMovement()
+                                    end)
+                                end
+                            else
+                                -- Kiểm tra xem có cần cập nhật huntState hay không
+                                print("✅ Compass replaced successfully while in " .. huntState .. " state")
+                                
+                                -- Thử bắt lại thông tin compass
+                                local newAngle = getCompassDirection()
+                                if newAngle then
+                                    print("🧭 New compass angle: " .. math.floor(newAngle) .. "°")
+                                    lastCompassAngle = newAngle
+                                    
+                                    -- Fix: Force resume hunt if we have a new compass regardless of state
+                                    if not isHunting then
+                                        print("🔄 Resuming hunt with new compass!")
+                                        isHunting = true
+                                        if huntState ~= "FORWARD" then
+                                            huntState = "FORWARD"
+                                        end
+                                        compassHistory = {}
+                                        task.delay(1, function()
+                                            forwardMovement()
+                                        end)
+                                    end
+                                end
+                            end
+                        else
+                            print("⚠️ Failed to get new compass reference despite successful equip")
+                        end
+                    else
+                        print("⚠️ Failed to equip a new compass")
+                        
+                        -- Nếu đang ở chế độ săn mà không thể trang bị, buộc dừng
+                        if huntState ~= "SAFE_MODE" and isHunting then
+                            print("⚠️ Cannot continue hunt without compass, entering SAFE_MODE")
+                            huntState = "SAFE_MODE"
+                            
+                            -- Di chuyển đến độ cao an toàn và dừng
+                            local currentPos = rootPart.Position
+                            local safePosition = Vector3.new(currentPos.X, CONFIG.SAFE_ALTITUDE, currentPos.Z)
+                            rootPart.CFrame = CFrame.new(safePosition)
+                        end
+                    end
+                end
+                
+                -- Kiểm tra trạng thái của huntState và isHunting
+                if huntState == "SAFE_MODE" and isHunting then
+                    print("⚠️ Inconsistent state detected: SAFE_MODE but isHunting=true")
+                    isHunting = false
+                end
+                
+                -- NEW: Check if we have a compass but aren't hunting for some reason
+                if not isHunting and getCompass() then
+                    local compassState = getCompassDirection()
+                    if compassState then
+                        print("🔍 Compass Monitor: Detected compass is ready but hunting isn't active!")
+                        print("🔄 Restarting hunting sequence automatically...")
+                        
+                        -- Delay slightly to avoid conflicts
+                        task.delay(2, function()
+                            smartCompassHunt()
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+function stopCompassMonitoring()
+    isMonitoringCompass = false
+    print("🛑 Compass monitoring service stopped")
+end
+
+-- ========================================================================================
+-- MOVEMENT & NAVIGATION SYSTEMS
+-- ========================================================================================
+function enableNoclip()
+    print("🔧 Enabling noclip...")
+    if not rootPart:FindFirstChild('BodyClip') then
+        local Noclip = Instance.new('BodyVelocity')
+        Noclip.Name = 'BodyClip'
+        Noclip.Parent = rootPart
+        Noclip.MaxForce = Vector3.new(100000, 100000, 100000)
+        Noclip.Velocity = Vector3.new(0, 0, 0)
+        noclipEnabled = true
+        print("✅ Noclip enabled")
+    else
+        print("⚠️ Noclip already enabled")
+    end
+end
+
+function disableNoclip()
+    print("🔧 Disabling noclip...")
+    local bodyClip = rootPart:FindFirstChild('BodyClip')
+    if bodyClip then
+        bodyClip:Destroy()
+        noclipEnabled = false
+        print("❌ Noclip disabled")
+    else
+        print("⚠️ Noclip not found")
+    end
+end
+
+function toggleNoclip()
+    if noclipEnabled then
+        disableNoclip()
+    else
+        enableNoclip()
+    end
+end
+
+-- ========================================================================================
+-- UTILITY FUNCTIONS - Các hàm tiện ích
+-- ========================================================================================
+
+-- Định dạng số thành chuỗi với số chữ số thập phân
+function formatNum(num, decimals)
+    decimals = decimals or 0
+    local mult = 10^decimals
+    return math.floor(num * mult) / mult
+end
+
+-- Log debug với định dạng đẹp
+function debugLog(category, message, ...)
+    local prefix = "[" .. category .. "] "
+    local args = {...}
+    
+    if #args > 0 then
+        message = string.format(message, unpack(args))
+    end
+    
+    print(prefix .. message)
+end
+
+-- Tính khoảng cách giữa hai điểm
+function getDistance(pos1, pos2)
+    return (pos1 - pos2).Magnitude
+end
+
+-- Tính khoảng cách 2D giữa hai điểm (chỉ X, Z)
+function getDistance2D(pos1, pos2)
+    return Vector3.new(pos1.X - pos2.X, 0, pos1.Z - pos2.Z).Magnitude
+end
+
+-- Tạo hướng di chuyển an toàn với độ cao cố định
+function createSafeMovementTarget(pos, height)
+    height = height or CONFIG.SAFE_ALTITUDE
+    return Vector3.new(pos.X, height, pos.Z)
+end
+
+-- Enhanced compass debugging với visual direction test
+function debugCompass()
+    if not compass then
+        print("❌ Compass not found!")
+        return
+    end
+    
+    local rotation = compass.Rotation
+    print("=== COMPASS DEBUG ===")
+    print("CompassArrow.Rotation:")
+    print("   X:", rotation.X)
+    print("   Y:", rotation.Y) 
+    print("   Z:", rotation.Z)
+    
+    -- Test hướng mũi tên dựa trên LookVector
+    local compassCFrame = compass.CFrame
+    local lookVector = compassCFrame.LookVector
+    print("CompassArrow.CFrame.LookVector:")
+    print("   X:", math.floor(lookVector.X * 1000) / 1000)
+    print("   Y:", math.floor(lookVector.Y * 1000) / 1000)
+    print("   Z:", math.floor(lookVector.Z * 1000) / 1000)
+    
+    -- Convert LookVector to angle
+    local lookAngle = math.deg(math.atan2(lookVector.X, -lookVector.Z))
+    while lookAngle < 0 do lookAngle = lookAngle + 360 end
+    while lookAngle >= 360 do lookAngle = lookAngle - 360 end
+    
+    print("LookVector angle:", math.floor(lookAngle), "°")
+    print("Y rotation angle:", math.floor(rotation.Y), "°")
+    
+    -- Test di chuyển theo LookVector
+    print("\n🧪 DIRECTION TESTS:")
+    print("Current player position:", math.floor(rootPart.Position.X), math.floor(rootPart.Position.Z))
+    
+    -- Test multiple direction calculations
+    local testDistance = 50
+    local directions = {
+        {name = "LookVector", vec = lookVector},
+        {name = "Y Rotation (sin,-cos)", vec = Vector3.new(math.sin(math.rad(rotation.Y)), 0, -math.cos(math.rad(rotation.Y)))},
+        {name = "Y Rotation (-sin,cos)", vec = Vector3.new(-math.sin(math.rad(rotation.Y)), 0, math.cos(math.rad(rotation.Y)))},
+        {name = "Y Rotation (cos,sin)", vec = Vector3.new(math.cos(math.rad(rotation.Y)), 0, math.sin(math.rad(rotation.Y)))},
+        {name = "Y Rotation (-cos,-sin)", vec = Vector3.new(-math.cos(math.rad(rotation.Y)), 0, -math.sin(math.rad(rotation.Y)))}
+    }
+    
+    for i, dir in ipairs(directions) do
+        local testPos = rootPart.Position + (dir.vec * testDistance)
+        print(string.format("%d. %s → Move to: %d, %d", 
+            i, dir.name, math.floor(testPos.X), math.floor(testPos.Z)))
+    end
+    
+    print("\n💡 WHICH DIRECTION MATCHES THE COMPASS ARROW?")
+    print("Use: testMove(1-5) to test each direction")
+end
+
+-- Test movement function
+function testMove(directionIndex)
+    if not compass then return end
+    
+    local rotation = compass.Rotation
+    local compassCFrame = compass.CFrame
+    local lookVector = compassCFrame.LookVector
+    local testDistance = 100
+    local direction
+    
+    if directionIndex == 1 then
+        direction = lookVector
+        print("🧪 Testing LookVector direction")
+    elseif directionIndex == 2 then
+        direction = Vector3.new(math.sin(math.rad(rotation.Y)), 0, -math.cos(math.rad(rotation.Y)))
+        print("🧪 Testing Y Rotation (sin,-cos)")
+    elseif directionIndex == 3 then
+        direction = Vector3.new(-math.sin(math.rad(rotation.Y)), 0, math.cos(math.rad(rotation.Y)))
+        print("🧪 Testing Y Rotation (-sin,cos)")
+    elseif directionIndex == 4 then
+        direction = Vector3.new(math.cos(math.rad(rotation.Y)), 0, math.sin(math.rad(rotation.Y)))
+        print("🧪 Testing Y Rotation (cos,sin)")
+    elseif directionIndex == 5 then
+        direction = Vector3.new(-math.cos(math.rad(rotation.Y)), 0, -math.sin(math.rad(rotation.Y)))
+        print("🧪 Testing Y Rotation (-cos,-sin)")
+    else
+        print("❌ Invalid direction index! Use 1-5")
+        return
+    end
+    
+    local targetPos = rootPart.Position + (direction * testDistance)
+    print("Moving to:", math.floor(targetPos.X), math.floor(targetPos.Z))
+    
+    -- Use the movement function
+    moveCharacterTo(targetPos)
+end
+
+_G.debugCompass = debugCompass
+_G.testMove = testMove
+
+-- Test multiple direction calculations
+function getDirectionFromCompass(compassAngle)
+    local radians = math.rad(compassAngle)
+    
+    -- Test different direction calculations
+    local dir1 = Vector3.new(math.sin(radians), 0, -math.cos(radians))        -- Original
+    local dir2 = Vector3.new(-math.sin(radians), 0, math.cos(radians))       -- Opposite
+    local dir3 = Vector3.new(math.cos(radians), 0, math.sin(radians))        -- 90° rotated
+    local dir4 = Vector3.new(-math.cos(radians), 0, -math.sin(radians))      -- 180° rotated
+    
+    print("🧭 Compass angle:", math.floor(compassAngle), "°")
+    print("   Direction options:")
+    print("   1 (sin,-cos):", math.floor(dir1.X*100)/100, math.floor(dir1.Z*100)/100)
+    print("   2 (-sin,cos):", math.floor(dir2.X*100)/100, math.floor(dir2.Z*100)/100)
+    print("   3 (cos,sin):", math.floor(dir3.X*100)/100, math.floor(dir3.Z*100)/100)
+    print("   4 (-cos,-sin):", math.floor(dir4.X*100)/100, math.floor(dir4.Z*100)/100)
+    
+    -- For now, use original but let's test
+    return dir1
+end
+
+function testCompassDirections()
+    local compassAngle = getCompassDirection()
+    print("=== COMPASS DIRECTION TEST ===")
+    
+    -- Test all 4 direction calculations
+    getDirectionFromCompass(compassAngle)
+    
+    print("💡 Chọn direction nào đúng hướng mũi tên chỉ?")
+    print("   Gõ: useDirection(1), useDirection(2), useDirection(3), hoặc useDirection(4)")
+end
+
+-- Set direction mode 2 as default (opposite direction)
+_G.directionMode = 2 -- Change from 1 to 2
+
+-- Initialize variables safely
+_G.directionMode = 2 -- Default to mode 2 (opposite direction)
+
+-- Safe direction selection function
+function useDirection(mode)
+    if not mode or mode < 1 or mode > 5 then
+        print("❌ Invalid direction mode! Use 1-5")
+        return
+    end
+    
+    _G.directionMode = mode
+    print("✅ Direction mode set to:", mode)
+end
+
+_G.useDirection = useDirection
+function useDirection(mode)
+    _G.directionMode = mode
+    print("✅ Đã chọn direction mode:", mode)
+    
+    local compassAngle = getCompassDirection()
+    local radians = math.rad(compassAngle)
+    local direction
+    
+    if mode == 1 then
+        direction = Vector3.new(math.sin(radians), 0, -math.cos(radians))
+    elseif mode == 2 then
+        direction = Vector3.new(-math.sin(radians), 0, math.cos(radians))
+    elseif mode == 3 then
+        direction = Vector3.new(math.cos(radians), 0, math.sin(radians))
+    elseif mode == 4 then
+        direction = Vector3.new(-math.cos(radians), 0, -math.sin(radians))
+    end
+    
+    print("🎯 Test direction:", math.floor(direction.X*100)/100, math.floor(direction.Z*100)/100)
+end
+
+_G.useDirection = useDirection
+_G.testDirections = testCompassDirections
+
+function getAngleToTarget(targetPosition)
+    local direction = (targetPosition - rootPart.Position)
+    local angle = math.deg(math.atan2(direction.X, -direction.Z))
+    
+    while angle < 0 do
+        angle = angle + 360
+    end
+    while angle >= 360 do
+        angle = angle - 360
+    end
+    
+    return angle
+end
+
+function getAngleDifference(angle1, angle2)
+    local diff = math.abs(angle1 - angle2)
+    if diff > 180 then
+        diff = 360 - diff
+    end
+    return diff
+end
+
+-- Movement state detection
+function updateMovementState()
+    local compassAngle = getCompassDirection()
+    
+    table.insert(directionHistory, compassAngle)
+    if #directionHistory > 5 then
+        table.remove(directionHistory, 1)
+    end
+    
+    if currentTarget then
+        local angleToTarget = getAngleToTarget(currentTarget.position)
+        local angleDiff = getAngleDifference(compassAngle, angleToTarget)
+        local distance = (currentTarget.position - rootPart.Position).Magnitude
+        
+        if lastPlayerPosition then
+            local lastDistanceToTarget = (currentTarget.position - lastPlayerPosition).Magnitude
+            local currentDistanceToTarget = distance
+            
+            if currentDistanceToTarget > lastDistanceToTarget + 20 then
+                overshootDetected = true
+                print("🔄 OVERSHOOT detected! Distance tăng từ", math.floor(lastDistanceToTarget), "→", math.floor(currentDistanceToTarget))
+            end
+        end
+        
+        if distance <= 30 then
+            movementState = "APPROACHING"
+        elseif overshootDetected or angleDiff > SEARCH_TOLERANCE then
+            movementState = "SEARCHING"
+            if overshootDetected then
+                movementState = "OVERSHOT"
+            end
+        elseif angleDiff <= STRAIGHT_TOLERANCE then
+            movementState = "STRAIGHT"
+            overshootDetected = false
+        else
+            movementState = "SEARCHING"
+        end
+    else
+        movementState = "SEARCHING"
+    end
+    
+    lastPlayerPosition = rootPart.Position
+    return movementState
+end
+
+-- Smart movement info với dynamic step sizes cho speed 450
+function getMovementInfo()
+    local state = updateMovementState()
+    local stepSize, description
+    
+    if state == "STRAIGHT" then
+        stepSize = 10  -- Bước nhỏ cho di chuyển thẳng (giảm từ 80)
+        description = "🚀 STRAIGHT - Small steps for accuracy"
+    elseif state == "APPROACHING" then
+        stepSize = 5   -- Bước rất nhỏ khi tiếp cận (giảm từ 25)
+        description = "🎯 APPROACHING - Micro steps for precision"
+    elseif state == "OVERSHOT" then
+        stepSize = 3   -- Bước cực nhỏ khi đã vượt quá (giảm từ 15)
+        description = "🔄 OVERSHOT - Micro steps for extreme precision"
+        overshootDetected = false
+    else -- SEARCHING
+        stepSize = 8   -- Bước nhỏ khi tìm kiếm (giảm từ 35)
+        description = "🔍 SEARCHING - Small steps for accuracy"
+    end
+    
+    print("📊", description, "- Step size:", stepSize)
+    return stepSize
+end
+
+-- Enhanced spawner detection and systematic visiting
+function getAllSpawnersSystematic()
+    local spawners = {}
+    local playerPos = rootPart.Position
+    
+    print("🔍 Scanning ALL spawners in workspace...")
+    
+    -- Comprehensive spawner detection
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local isSpawner = false
+            local objName = obj.Name:lower()
+            
+            if objName == "spawner" or 
+               objName:find("spawn") or 
+               objName:find("treasure") or
+               objName:find("chest") or
+               obj.Name == "Spawner" then
+                isSpawner = true
+            end
+            
+            if isSpawner then
+                local distance = (obj.Position - playerPos).Magnitude
+                local treeName = "Unknown"
+                local parent = obj.Parent
+                
+                while parent and parent ~= workspace do
+                    if parent.Name ~= "Trees" and parent.Name ~= "Workspace" then
+                        treeName = parent.Name
+                        break
+                    end
+                    parent = parent.Parent
+                end
+                
+                table.insert(spawners, {
+                    object = obj,
+                    treeName = treeName,
+                    position = obj.Position,
+                    distance = distance,
+                    fullPath = obj:GetFullName()
+                })
+            end
+        end
+    end
+    
+    -- Sort by distance
+    table.sort(spawners, function(a, b) return a.distance < b.distance end)
+    
+    print("📊 Found", #spawners, "total spawners")
+    for i = 1, math.min(10, #spawners) do
+        local s = spawners[i]
+        print(string.format("  %d. %s - Distance: %d", i, s.treeName, math.floor(s.distance)))
+    end
+    
+    return spawners
+end
+
+-- Systematic spawner visiting
+local allSpawners = {}
+local currentSpawnerIndex = 1
+
+-- Reverse detection logic for precise treasure location
+-- Góc 0..360 từ vector phẳng (X,Z)
+local function angleOfVec(v)
+    local a = math.deg(math.atan2(v.X, -v.Z))
+    while a < 0 do a = a + 360 end
+    while a >= 360 do a = a - 360 end
+    return a
+end
+
+-- Unit vector từ compass angle (khớp công thức bạn đang dùng ở FORWARD)
+local function dirFromAngle(deg)
+    local r = math.rad(deg)
+    return Vector3.new(math.cos(r), 0, math.sin(r))
+end
+
+-- Khoảng cách góc nhỏ nhất (0..180)
+local function angDiff(a, b)
+    local d = math.abs(a - b)
+    if d > 180 then d = 360 - d end
+    return d
+end
+
+-- === LOCAL TREASURE AREA CONFIG ===
+local RADIUS_STEPS_LOCAL = {10, 15, 20, 25,50}   -- nấc bán kính 2D (studs)
+local MAX_LOCAL_TELEPORTS = math.huge     -- bạn có thể giới hạn, ví dụ 50
+local SPAWNER_NAME_HINTS = {"spawner", "spawn", "treasure", "chest"}  -- chữ thường
+
+-- Variables for wrong-way detection during reverse
+local REVERSE_STEP = 30
+local REVERSE_WRONGWAY_THRESH = 45   -- lệch khỏi -arrow > 45° coi như sai
+local REVERSE_BAD_PROGRESS = 6       -- "tiến độ" tệ hơn >6° coi như xấu
+local REVERSE_BAD_STREAK = 2         -- 2 bước liên tiếp xấu → sửa hướng
+
+-- ========================================================================================
+-- SPAWNER DETECTION SYSTEM
+-- ========================================================================================
+
+-- Kiểm tra xem tên có phải là spawner không
+local function nameLooksLikeSpawner(s)
+    s = string.lower(s)
+    for _, hint in ipairs(CONFIG.SPAWNER_NAME_HINTS) do
+        if s == hint or string.find(s, hint, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Tìm tên gốc (parent) có ý nghĩa của một đối tượng
+local function findMeaningfulParentName(obj)
+    local treeName = "Unknown"
+    local parent = obj.Parent
+    
+    while parent and parent ~= workspace do
+        if parent.Name ~= "Trees" and parent.Name ~= "Workspace" then
+            treeName = parent.Name
+            break
+        end
+        parent = parent.Parent
+    end
+    
+    return treeName
+end
+
+-- Tạo cấu trúc thông tin spawner
+local function createSpawnerInfo(obj, distance, distance2D)
+    return {
+        object = obj,
+        treeName = findMeaningfulParentName(obj),
+        position = obj.Position,
+        distance = distance or (obj.Position - rootPart.Position).Magnitude,
+        distance2D = distance2D,
+        fullPath = obj:GetFullName(),
+        angle = getAngleToTarget(obj.Position)
+    }
+end
+
+-- Tìm spawner trong phạm vi cho trước
+function findSpawnersInRadius(radiusSteps, centerXZ)
+    local chosenRadius = nil
+    local picked = {}         -- mảng kết quả
+    local seen = {}           -- chống trùng theo object:GetDebugId()
+
+    for _, r in ipairs(radiusSteps) do
+        print(("Scanning for spawners within %d studs of treasure location..."):format(r))
+        local countBefore = #picked
+
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                local ok = nameLooksLikeSpawner(obj.Name)
+                -- fallback: nếu part tên "Handle", thử xem parent có tên gợi ý
+                if not ok and obj.Parent and obj.Parent ~= workspace then
+                    ok = nameLooksLikeSpawner(obj.Parent.Name)
+                end
+                if ok then
+                    local p = obj.Position
+                    local d2 = (Vector3.new(p.X, 0, p.Z) - centerXZ).Magnitude
+                    if d2 <= r then
+                        local id = obj:GetDebugId()
+                        if not seen[id] then
+                            seen[id] = true
+                            -- tìm tên "cây"/nhóm cho đẹp log
+                            local treeName, parent = "Unknown", obj.Parent
+                            while parent and parent ~= workspace do
+                                if parent.Name ~= "Trees" and parent.Name ~= "Workspace" then
+                                    treeName = parent.Name; break
+                                end
+                                parent = parent.Parent
+                            end
+                            table.insert(picked, {
+                                object    = obj,
+                                treeName  = treeName,
+                                position  = obj.Position,
+                                distance2D= d2
+                            })
+                        end
+                    end
+                end
+            end
+        end
+
+        if #picked > countBefore then
+            chosenRadius = r
+            break -- dừng ngay ở nấc đầu có kết quả
+        end
+    end
+
+    if chosenRadius then
+        print(("Found %d spawners within %d studs."):format(#picked, chosenRadius))
+        table.sort(picked, function(a,b) return a.distance2D < b.distance2D end)
+    else
+        print("No spawners found even up to max radius.")
+    end
+
+    return picked, chosenRadius
+end
+
+local COMPASS_FLIP_THRESHOLD = 120 -- Degrees for detecting compass flip
+
+function detectCompassFlip(currentAngle)
+    if not currentAngle or type(currentAngle) ~= "number" then
+        return false
+    end
+    
+    table.insert(compassHistory, currentAngle)
+    if #compassHistory > 5 then
+        table.remove(compassHistory, 1)
+    end
+    
+    if #compassHistory < 2 then return false end
+    
+    local prevAngle = compassHistory[#compassHistory - 1]
+    
+    if not prevAngle or type(prevAngle) ~= "number" then
+        return false
+    end
+    
+    local angleDiff = math.abs(currentAngle - prevAngle)
+    if angleDiff > 180 then
+        angleDiff = 360 - angleDiff
+    end
+    
+    if angleDiff > COMPASS_FLIP_THRESHOLD then
+        return true
+    end
+    
+    return false
+end
+
+function smartCompassHunt()
+    -- Cancel any existing hunts first to ensure clean start
+    if isHunting then
+        print("⚠️ Hunt already in progress. Resetting for clean start...")
+        isHunting = false
+        huntState = "FORWARD"
+        compassHistory = {}
+        
+        -- Cancel any existing tweens
+        if currentTween then
+            currentTween:Cancel()
+            currentTween = nil
+        end
+        
+        -- Cancel any reverse timeout
+        if GLOBAL.reverseTimeout then
+            task.cancel(GLOBAL.reverseTimeout)
+            GLOBAL.reverseTimeout = nil
+        end
+        
+        -- Short delay to ensure everything is reset
+        task.wait(0.5)
+    end
+    
+    local equippedCompass = EequipSam()
+    if not equippedCompass then
+        print("❌ Failed to equip compass. Hunt aborted.")
+        return
+    end
+    
+    compass = getCompass()
+    if not compass then
+        print("❌ Compass not found after equipping. Hunt aborted.")
+        return
+    end
+    
+    local initialAngle = getCompassDirection()
+    if not initialAngle then
+        print("❌ Cannot read compass angle. Hunt aborted.")
+        return
+    end
+    
+    startCompassMonitoring()
+    enableNoclip()
+    
+    local currentPos = rootPart.Position
+    local safeAltitude = Vector3.new(currentPos.X, CONFIG.SAFE_ALTITUDE, currentPos.Z)
+    local safeCFrame = CFrame.new(safeAltitude)
+    
+    -- Sử dụng tốc độ siêu nhanh để bay lên trời
+    print("🚀 Rising to altitude with SUPER SPEED!")
+    local altitudeTween = TweenService:Create(
+        rootPart, 
+        TweenInfo.new((CONFIG.SAFE_ALTITUDE - currentPos.Y) / CONFIG.VERTICAL_SPEED, Enum.EasingStyle.Quad),
+        {CFrame = safeCFrame}
+    )
+    altitudeTween:Play()
+    
+    altitudeTween.Completed:Connect(function()
+        compass = getCompass()
+        if not compass then
+            local reEquipped = EequipSam()
+            if reEquipped then
+                compass = getCompass()
+            end
+            
+                if not compass then
+                    print("❌ Cannot continue without compass. Hunt aborted.")
+                    isHunting = false  -- Make sure hunting flag is cleared
+                    return
+                end
+            end        -- Thiết lập các trạng thái săn
+        isHunting = true
+        huntState = "FORWARD"
+        compassHistory = {}
+        
+        -- Thiết lập lại các kết nối compass
+        bindCompassSignal()
+        
+        -- Log trạng thái ban đầu
+        print("🧭 Initial compass angle: " .. math.floor(getCompassDirection() or 0) .. "°")
+        print("🎯 Hunt mode: " .. huntState)
+        print("⚙️ Direction mode: " .. tostring(_G.directionMode or 2))
+        
+        -- Bắt đầu săn
+        forwardMovement()
+    end)
+end
+
+function forwardMovement()
+    if not isHunting or huntState ~= "FORWARD" then 
+        print("⚠️ Forward movement called but huntState=" .. huntState .. ", isHunting=" .. tostring(isHunting))
+        return 
+    end
+    
+    -- Kiểm tra xem compass có tồn tại và hoạt động không
+    if not compass or not compass.Parent then
+        print("⚠️ Compass reference invalid at start of forwardMovement")
+        compass = getCompass()
+        if not compass then
+            print("❌ Cannot continue without working compass")
+            if performSafetyCheck() == false then
+                return -- Stop if safety check fails
+            end
+        else
+            print("✅ Compass re-established during forward movement")
+        end
+    end
+    
+    -- Perform safety check before each movement
+    if not performSafetyCheck() then
+        return -- Stop if compass check fails
+    end
+    
+    game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+    
+    local compassAngle = getCompassDirection()
+    
+    -- Double check compass angle is valid
+    if not compassAngle then
+        print("❌ Compass angle invalid, entering safe mode")
+        performSafetyCheck()
+        return
+    end
+    
+    if detectCompassFlip(compassAngle) then
+        print("Compass flipped! Starting reverse detection...")
+        huntState = "REVERSING"
+        reverseStartPosition = rootPart.Position
+        
+        -- Reset any existing timeout
+        if GLOBAL.reverseTimeout then
+            task.cancel(GLOBAL.reverseTimeout)
+            GLOBAL.reverseTimeout = nil
+        end
+        
+        -- Store the direction we were moving BEFORE the flip
+        local prevCompassAngle = compassHistory[#compassHistory - 1] or compassAngle
+        local radians = math.rad(prevCompassAngle)
+        lastDirection = Vector3.new(math.cos(radians), 0, math.sin(radians))
+        
+        print("Compass flipped from", math.floor(prevCompassAngle), "to", math.floor(compassAngle), "degrees")
+        print("Saved ORIGINAL forward direction:", math.floor(lastDirection.X * 1000) / 1000, math.floor(lastDirection.Z * 1000) / 1000)
+        
+        reverseMovement()
+        return
+    end
+    
+    -- Normal forward movement
+    local radians = math.rad(compassAngle)
+    local direction = Vector3.new(math.cos(radians), 0, math.sin(radians))
+    lastDirection = direction  -- Cập nhật đều, tránh "cũ"/lệch
+    
+    local currentPos = rootPart.Position
+    local targetPos = currentPos + (direction * 10) -- Bước di chuyển lớn hơn (10 studs thay vì 20)
+    targetPos = Vector3.new(targetPos.X, 3000, targetPos.Z)
+
+    print("🚀 Moving FAST with large steps - Compass:", math.floor(compassAngle), "degrees")
+
+    local targetCFrame = CFrame.new(targetPos)
+    local tween, duration = tpTo(targetCFrame)
+    
+    task.spawn(function()
+        task.wait(duration)
+        -- Kiểm tra lại trạng thái trước khi tiếp tục
+        if isHunting and huntState == "FORWARD" then
+            forwardMovement()
+        else
+            print("⚠️ Hunt state changed during forward movement, now: " .. huntState)
+        end
+    end)
+end
+
+function reverseMovement()
+    if not isHunting or huntState ~= "REVERSING" then 
+        print("⚠️ Reverse movement called but state is not REVERSING: " .. huntState)
+        return 
+    end
+    
+    -- Kiểm tra xem compass có tồn tại và hoạt động không
+    if not compass or not compass.Parent then
+        print("⚠️ Compass reference invalid at start of reverseMovement")
+        compass = getCompass()
+        if not compass then
+            print("❌ Cannot continue reverse movement without working compass")
+            if performSafetyCheck() == false then
+                return -- Stop if safety check fails
+            end
+        else
+            print("✅ Compass re-established during reverse movement")
+        end
+    end
+    
+    if not performSafetyCheck() then return end  -- Stop if compass check fails
+    
+    game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+
+    local compassAngle = getCompassDirection()
+    if not compassAngle then
+        print("Compass angle invalid during reverse, entering safe mode")
+        performSafetyCheck()
+        return
+    end
+
+    -- Nếu bất chợt flip to → đã cắt qua điểm kho báu
+    if detectCompassFlip(compassAngle) then
+        print("🎯 TREASURE LOCATION FOUND!")
+        huntState = "FOUND"
+        
+        -- Hủy timeout khi thành công
+        if GLOBAL.reverseTimeout then
+            task.cancel(GLOBAL.reverseTimeout)
+            GLOBAL.reverseTimeout = nil
+        end
+        
+        foundTreasure()
+        return
+    end
+
+    -- ĐƠN GIẢN HÓA: Chỉ đi theo hướng mũi tên nhưng với bước chậm hơn
+    -- Lấy vector hướng từ góc la bàn
+    local arrowVec = dirFromAngle(compassAngle)
+    
+    -- Lưu hướng hiện tại để tham chiếu sau này
+    lastDirection = arrowVec
+    
+    -- Sử dụng bước di chuyển nhỏ hơn để phát hiện kho báu chính xác hơn
+    local SLOW_STEP = 5  -- Giữ bước di chuyển nhỏ để tìm kho báu chính xác
+    
+    -- Vị trí hiện tại và mục tiêu
+    local cur = rootPart.Position
+    local targetPos = Vector3.new(cur.X + arrowVec.X * SLOW_STEP, 3000, cur.Z + arrowVec.Z * SLOW_STEP)
+    
+    -- Di chuyển đến vị trí mới
+    print("🔍 PRECISION MODE: Theo hướng mũi tên với bước nhỏ: " .. math.floor(compassAngle) .. "°")
+    local tween, duration = tpTo(CFrame.new(targetPos))
+    
+    -- THAY ĐỔI: Thêm timeout bảo vệ để tránh mắc kẹt trong reverse mode
+    if not GLOBAL.reverseTimeout then
+        GLOBAL.reverseTimeout = task.delay(CONFIG.REVERSE_TIMEOUT, function()
+            if huntState == "REVERSING" then
+                print("⚠️ TIMEOUT: Đã ở chế độ REVERSING quá lâu (" .. CONFIG.REVERSE_TIMEOUT .. "s)")
+                print("🔄 Chuyển sang chế độ FORWARD để tiếp tục tìm kiếm")
+                
+                -- Reset lại trạng thái để tiếp tục tìm kiếm
+                huntState = "FORWARD"
+                compassHistory = {}
+                wrongSteps = 0
+                
+                -- Quay lại altitude cao và tìm kiếm
+                local currentPos = rootPart.Position
+                local safeReturn = CFrame.new(Vector3.new(currentPos.X, 3000, currentPos.Z))
+                local returnTween = tpTo(safeReturn)
+                
+                task.delay(2, function()
+                    -- Kiểm tra lại compass trước khi tiếp tục
+                    if not compass or not compass.Parent then
+                        compass = getCompass()
+                    end
+                    
+                    if compass then
+                        forwardMovement()
+                    else
+                        print("⚠️ Cannot continue forward after timeout: Compass not found")
+                        performSafetyCheck()
+                    end
+                end)
+                
+                GLOBAL.reverseTimeout = nil
+            end
+        end)
+    end
+    
+    -- Đợi di chuyển hoàn tất, sau đó tiếp tục
+    task.wait(duration)
+    
+    -- Tiếp tục di chuyển nếu vẫn trong chế độ reverse
+    if isHunting and huntState == "REVERSING" then
+        reverseMovement()
+    else
+        print("⚠️ Hunt state changed during reverse movement, now: " .. huntState)
+    end
+end
+
+function foundTreasure()
+    print("🎯 PRECISION LOCATION DETECTED!")
+    local currentPos = rootPart.Position
+    
+    -- Hủy timeout khi tìm thấy kho báu
+    if GLOBAL.reverseTimeout then
+        task.cancel(GLOBAL.reverseTimeout)
+        GLOBAL.reverseTimeout = nil
+    end
+    
+    -- Descend to ground level first
+    print("⬇️ Descending to treasure area...")
+    local groundLevel = Vector3.new(currentPos.X, currentPos.Y - 1950, currentPos.Z)
+    local descendCFrame = CFrame.new(groundLevel)
+    
+    local descendTween, descendDuration = tpTo(descendCFrame)
+    
+    task.spawn(function()
+        task.wait(descendDuration + 1)
+        
+        -- Now scan for spawners in the immediate area
+        scanAndVisitLocalSpawners()
+    end)
+end
+
+function scanAndVisitLocalSpawners()
+    local playerPos = rootPart.Position
+    local treasureCenter = Vector3.new(playerPos.X, 0, playerPos.Z) -- 2D position for comparison
+    local localSpawners = {}
+    
+    print("Scanning for spawners within 25 studs of treasure location...")
+    print("Player position:", math.floor(playerPos.X), math.floor(playerPos.Z))
+    
+    -- Find all spawners in a larger radius around the treasure (25 studs to catch all 4 corners)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local objName = obj.Name:lower()
+            if objName == "spawner" or objName:find("spawn") or objName:find("treasure") or objName:find("chest") then
+                local spawnerPos2D = Vector3.new(obj.Position.X, 0, obj.Position.Z)
+                local distance2D = (spawnerPos2D - treasureCenter).Magnitude
+
+                if distance2D <= 50 then -- Increased to 50 studs to catch all tree corners
+                    local treeName = "Unknown"
+                    local parent = obj.Parent
+                    while parent and parent ~= workspace do
+                        if parent.Name ~= "Trees" and parent.Name ~= "Workspace" then
+                            treeName = parent.Name
+                            break
+                        end
+                        parent = parent.Parent
+                    end
+                    
+                    table.insert(localSpawners, {
+                        object = obj,
+                        treeName = treeName,
+                        position = obj.Position,
+                        distance2D = distance2D,
+                        fullPath = obj:GetFullName()
+                    })
+                    
+                    print("Found local spawner:", treeName, "- 2D Distance:", math.floor(distance2D), "- Position:", math.floor(obj.Position.X), math.floor(obj.Position.Z))
+                end
+            end
+        end
+    end
+    
+    if #localSpawners == 0 then
+        print("No spawners found in treasure area, expanding search...")
+        
+        -- If no spawners found, try a much larger area
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                local objName = obj.Name:lower()
+                if objName == "spawner" or objName:find("spawn") then
+                    local spawnerPos2D = Vector3.new(obj.Position.X, 0, obj.Position.Z)
+                    local distance2D = (spawnerPos2D - treasureCenter).Magnitude
+                    
+                    if distance2D <= 50 then -- Even larger search radius
+                        local treeName = obj.Parent and obj.Parent.Name or "Unknown"
+                        table.insert(localSpawners, {
+                            object = obj,
+                            treeName = treeName,
+                            position = obj.Position,
+                            distance2D = distance2D
+                        })
+                        print("Extended search - Found spawner:", treeName, "- Distance:", math.floor(distance2D))
+                    end
+                end
+            end
+        end
+    end
+    
+    if #localSpawners == 0 then
+        print("Still no spawners found, continuing treasure hunt...")
+        continueTreasureHunt()
+        return
+    end
+    
+    -- Sort by 2D distance
+    table.sort(localSpawners, function(a, b) return a.distance2D < b.distance2D end)
+    
+    print("Found", #localSpawners, "spawners in treasure area. Starting instant teleport collection...")
+    
+    spamTeleportToSpawners(localSpawners)
+end
+
+function spamTeleportToSpawners(spawners)
+    local spawnerIndex = 1
+    
+    local function visitNextLocalSpawner()
+        if spawnerIndex > #spawners then
+            print("✅ Finished visiting all local spawners!")
+            continueTreasureHunt()
+            return
+        end
+        
+        local spawner = spawners[spawnerIndex]
+        
+        print(string.format("📍 Spam teleport %d/%d: %s (2D Distance: %d)", 
+            spawnerIndex, #spawners, spawner.treeName, math.floor(spawner.distance2D)))
+        
+        -- Fake click to update compass
+        game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+        
+        -- Quick teleport to spawner
+        local targetCFrame = CFrame.new(spawner.position)
+        plr.Character.HumanoidRootPart.CFrame = targetCFrame
+        
+        task.spawn(function()
+            task.wait(0.5) -- Quick visit
+            -- Another fake click at spawner
+            game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+            
+            spawnerIndex = spawnerIndex + 1
+            task.wait(0.2) -- Brief pause between teleports
+            visitNextLocalSpawner()
+        end)
+    end
+    
+    visitNextLocalSpawner()
+end
+
+function continueTreasureHunt()
+    print("🔄 Treasure area completed, continuing hunt...")
+    
+    -- Return to safe altitude
+    local currentPos = rootPart.Position
+    local safeReturn = CFrame.new(Vector3.new(currentPos.X, 3000, currentPos.Z))
+    local returnTween, returnDuration = tpTo(safeReturn)
+    
+    task.spawn(function()
+        task.wait(returnDuration + 1)
+        
+        -- Reset for next treasure
+        huntState = "FORWARD"
+        compassHistory = {}
+        print("🔄 Searching for next treasure...")
+        
+        forwardMovement()
+    end)
+end
+
+-- Modified tpTo function with adaptive speed
+function tpTo(targetCFrame)
+    if currentTween then
+        currentTween:Cancel()
+    end
+    
+    local currentPos = rootPart.Position
+    local targetPos = targetCFrame.Position
+    local distance = (targetPos - currentPos).Magnitude
+    
+    -- Determine if this is a vertical movement (going up to altitude)
+    local isVerticalMovement = math.abs(targetPos.Y - currentPos.Y) > 100
+    local movementType = "HORIZONTAL"
+    local speedToUse = SPEED
+    
+    -- Use the right speed for each movement type
+    if isVerticalMovement then
+        movementType = "VERTICAL"
+        speedToUse = CONFIG.VERTICAL_SPEED  -- Siêu nhanh khi bay lên trời (1000)
+    elseif huntState == "REVERSING" then
+        movementType = "REVERSING" 
+        speedToUse = CONFIG.SPEED_APPROACHING  -- Chậm khi đang đi ngược lại để định vị chính xác
+    else
+        speedToUse = CONFIG.SPEED_STRAIGHT  -- Nhanh khi di chuyển thông thường
+    end
+    
+    local duration = distance / speedToUse
+    
+    print("🚀 " .. movementType .. " movement at speed " .. speedToUse .. " - Distance: " .. math.floor(distance))
+    
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    currentTween = TweenService:Create(rootPart, tweenInfo, {CFrame = targetCFrame})
+    currentTween:Play()
+    
+    return currentTween, duration
+end
+
+function findOptimalSpawner(forceGlobal)
+    local compassAngle = getCompassDirection()
+    local allSpawners = smartScanSpawners(forceGlobal)
+    
+    print("🧭 Current compass:", math.floor(compassAngle), "°")
+    
+    if #allSpawners == 0 then
+        if not forceGlobal then
+            print("🔄 No local spawners, trying global scan...")
+            return findOptimalSpawner(true)
+        else
+            print("❌ No spawners found at all!")
+            return nil
+        end
+    end
+    
+    local alignedSpawners = {}
+    for _, spawner in pairs(allSpawners) do
+        local angleDiff = getAngleDifference(spawner.angle, compassAngle)
+        if angleDiff <= SEARCH_TOLERANCE then
+            spawner.alignmentScore = angleDiff + (spawner.distance / 100)
+            table.insert(alignedSpawners, spawner)
+        end
+    end
+    
+    print("✅ Found", #alignedSpawners, "aligned spawners")
+    
+    if #alignedSpawners > 0 then
+        table.sort(alignedSpawners, function(a, b) return a.alignmentScore < b.alignmentScore end)
+        local target = alignedSpawners[1]
+        print("🎯 Target selected:", target.treeName, "- Angle diff:", math.floor(getAngleDifference(target.angle, compassAngle)), "° - Distance:", math.floor(target.distance))
+        return target
+    end
+    
+    print("❌ No aligned spawners found")
+    return nil
+end
+
+-- Optimized tween function cho speed 450
+function tpdeobisao(a, bl)
+    if bl == nil then
+        bl = false 
+    end
+    local plr = game.Players.LocalPlayer
+    local creat32etween
+    local CULO312RD
+    local calltween = {}
+    local cac
+    if a == nil then
+        cac = CFrame.new(0, 0, 0)
+    else
+        cac = a
+    end
+    local pos = (cac.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+    local TweenService = game:GetService("TweenService")
+    if plr.Character.Humanoid.Health > 0 then
+        -- Adaptive easing based on movement state
+        local easingStyle = Enum.EasingStyle.Linear
+        if movementState == "SEARCHING" or movementState == "OVERSHOT" then
+            easingStyle = Enum.EasingStyle.Quad -- Smoother for precision
+        elseif movementState == "APPROACHING" then
+            easingStyle = Enum.EasingStyle.Sine -- Gentle approach
+        end
+        
+        CULO312RD = TweenInfo.new(
+            pos / SPEED,  -- Sử dụng biến SPEED thay vì hardcode 450
+            easingStyle,
+            Enum.EasingDirection.InOut
+        )
+        creat32etween = TweenService:Create(plr.Character.HumanoidRootPart, CULO312RD, { CFrame = cac })
+        creat32etween:Play()
+        if bl then
+            creat32etween.Completed:Wait()
+        end
+    else
+        creat32etween = nil
+    end
+    function calltween:Stop()
+        if creat32etween then
+            creat32etween:Cancel()
+        end
+    end
+    return calltween
+end
+
+-- Smart movement với optimized logic cho các bước chính xác
+function moveCharacterTo(targetPosition)
+    local distance = (targetPosition - rootPart.Position).Magnitude
+    local duration = distance / SPEED  -- Sử dụng biến SPEED thay vì hardcode
+    
+    print("� Moving with precision at speed " .. SPEED .. " to:", math.floor(targetPosition.X), math.floor(targetPosition.Z))
+    print("📍 Distance:", math.floor(distance), "- ETA:", math.floor(duration*100)/100, "s - Mode:", movementState)
+    
+    -- Cancel existing movement
+    if currentTween then
+        currentTween:Stop()
+        currentTween = nil
+    end
+    
+    -- Use optimized tpdeobisao
+    local targetCFrame = CFrame.new(targetPosition)
+    currentTween = tpdeobisao(targetCFrame, false)
+    
+    -- Smart continuation based on movement state
+    task.spawn(function()
+        if movementState == "STRAIGHT" then
+            -- For straight movement, wait for completion + small buffer
+            task.wait(duration + 0.2)
+        else
+            -- For searching, shorter wait for responsiveness
+            task.wait(duration + 0.1)
+        end
+        
+        if isHunting then
+            local actualDistance = (rootPart.Position - targetPosition).Magnitude
+            if actualDistance <= 12 then
+                print("✅ Reached target precisely!")
+            else
+                print("📍 Close enough, distance:", math.floor(actualDistance))
+            end
+            
+            -- Immediate continue for fast hunting
+            huntStep()
+        end
+    end)
+    
+    return currentTween
+end
+
+function adaptiveTween(targetPosition)
+    -- Use BodyPosition instead of TweenService for better character movement
+    return moveCharacterTo(targetPosition)
+end
+
+function huntStep()
+    if not isHunting then 
+        print("⚠️ Hunt step called but hunting is disabled")
+        return 
+    end
+    
+    print("🔄 Hunt step starting...")
+    local target = findOptimalSpawner()
+    
+    if target then
+        currentTarget = target
+        
+        if target.distance <= DETECTION_DISTANCE then
+            print("🎉 REACHED SPAWNER:", target.treeName, "!")
+            
+            -- Fast cleanup for next target
+            scanCache = {}
+            overshootDetected = false
+            currentTarget = nil
+            
+            print("🔄 Searching for next spawner...")
+            task.spawn(function()
+                task.wait(0.5) -- Brief pause to collect/interact
+                huntStep()
+            end)
+            return
+        end
+        
+        local speed, stepSize = getAdaptiveSpeed()
+        
+        if movementState == "STRAIGHT" then
+            print("🚀 STRAIGHT shot to:", target.treeName, "- Distance:", math.floor(target.distance))
+            moveCharacterTo(target.position)
+        else
+            local compassAngle = getCompassDirection()
+            local radians = math.rad(compassAngle)
+            
+            -- Use selected direction mode
+            local direction
+            if _G.directionMode == 1 then
+                direction = Vector3.new(math.sin(radians), 0, -math.cos(radians))
+            elseif _G.directionMode == 2 then
+                direction = Vector3.new(-math.sin(radians), 0, math.cos(radians))
+            elseif _G.directionMode == 3 then
+                direction = Vector3.new(math.cos(radians), 0, math.sin(radians))
+            elseif _G.directionMode == 4 then
+                direction = Vector3.new(-math.cos(radians), 0, -math.sin(radians))
+            else
+                direction = Vector3.new(math.sin(radians), 0, -math.cos(radians)) -- fallback
+            end
+            
+            local nextPosition = rootPart.Position + (direction * stepSize)
+            
+            print("🔍 Step movement hunt step:", movementState, "- Step size:", stepSize, "- Direction mode:", _G.directionMode)
+            moveCharacterTo(nextPosition)
+        end
+    else
+        print("🗺️ No target found, exploratory movement...")
+        local compassAngle = getCompassDirection()
+        local radians = math.rad(compassAngle)
+        
+        -- Use selected direction mode
+        local direction
+        if _G.directionMode == 1 then
+            direction = Vector3.new(math.sin(radians), 0, -math.cos(radians))
+        elseif _G.directionMode == 2 then
+            direction = Vector3.new(-math.sin(radians), 0, math.cos(radians))
+        elseif _G.directionMode == 3 then
+            direction = Vector3.new(math.cos(radians), 0, math.sin(radians))
+        elseif _G.directionMode == 4 then
+            direction = Vector3.new(-math.cos(radians), 0, -math.sin(radians))
+        else
+            direction = Vector3.new(math.sin(radians), 0, -math.cos(radians))
+        end
+        
+        local targetPosition = rootPart.Position + (direction * 80) -- Large exploration step
+        
+        print("🧭 Exploratory direction mode movement hunt step:", _G.directionMode)
+        moveCharacterTo(targetPosition)
+    end
+end
+
+function startHunting()
+    if isHunting then
+        print("⚠️ Already hunting!")
+        return
+    end
+    
+    print("🚀 STARTING HUNT...")
+    enableNoclip()
+    isHunting = true
+    currentTarget = nil
+    scanCache = {}
+    directionHistory = {}
+    overshootDetected = false
+    lastPlayerPosition = rootPart.Position
+    
+    print("✅ Hunt variables reset")
+    print("🎯 System: Straight = Fast, Search = Slow, Overshoot = Extra Slow")
+    
+    bindCompassSignal() -- Use new binding system
+    startCompassMonitoring() -- Start compass monitoring service
+    
+    lastCompassAngle = getCompassDirection()
+    print("✅ Compass monitoring active")
+    print("🏃‍♂️ Starting first hunt step...")
+    huntStep()
+end
+
+function stopHunting()
+    isHunting = false
+    huntState = "STOPPED"
+    currentTarget = nil
+    scanCache = {}
+    
+    -- Cleanup all timeouts
+    if GLOBAL.reverseTimeout then
+        task.cancel(GLOBAL.reverseTimeout)
+        GLOBAL.reverseTimeout = nil
+    end
+    
+    print("🛑 HUNT STOPPED!")
+    
+    -- Clean up movement
+    if currentTween then
+        currentTween:Stop()
+        currentTween = nil
+    end
+    
+    if huntConnection then
+        huntConnection:Disconnect()
+        huntConnection = nil
+    end
+    
+    -- Stop compass monitoring
+    stopCompassMonitoring()
+end
+
+-- Test compass first
+print("🧪 Testing compass...")
+local testAngle = getCompassDirection()
+print("✅ Compass test result:", math.floor(testAngle), "°")
+
+print("SMART COMPASS-BASED TREASURE DETECTION WITH SAFETY:")
+print("   Follows compass direction until it flips")
+print("   Detects treasure areas by compass flip (120+ degree change)")
+print("   Operates at 3000 altitude for safety")
+print("   Auto fake clicks to update compass")
+print("   SAFETY: Auto-stops if compass not equipped/broken")
+
+print("========================================================================")
+print("                         COMMAND GUIDE")
+print("========================================================================")
+print("🔍 MAIN COMMANDS:")
+print("   smartCompassHunt() - Start smart compass hunting")
+print("   _G.stopHunt() - Stop hunting")
+print("   performSafetyCheck() - Manual safety check")
+print("")
+print("🔧 DEBUG COMMANDS:")
+print("   debugCompass() - Show all compass data")
+print("   testMove(1-5) - Test each direction (1=LookVector, 2-5=Y rotation)")
+print("")
+print("🧭 DIRECTION COMMANDS:")
+print("   testDirections() - Test all 4 direction modes")
+print("   useDirection(1-4) - Select correct direction")
+print("")
+print("📋 OTHER UTILITIES:")
+print("   _G.startHunt() - Start hunting") 
+print("   _G.toggleNoclip() - Toggle noclip")
+print("========================================================================")
+
+-- Enhanced global functions
+_G.smartCompassHunt = smartCompassHunt
+_G.performSafetyCheck = performSafetyCheck
+_G.stopHunt = function()
+    isHunting = false
+    huntState = "STOPPED"
+    compassHistory = {}
+    if currentTween then
+        currentTween:Cancel()
+    end
+    print("Hunt stopped manually")
+end
+
+print("AUTO-STARTING SMART COMPASS HUNT IN 2 SECONDS...")
+print("Safety check: Ensuring compass is equipped...")
+
+-- Perform initial safety check
+if performSafetyCheck() then
+    print("Initial safety check passed!")
+    wait(2)
+    smartCompassHunt()
+else
+    print("Initial safety check failed - please equip compass and restart")
+end
+
+print("✅ SCRIPT FULLY LOADED!")
+
+-- ========================================================================================
+-- VERSION INFO
+-- ========================================================================================
+local VERSION = {
+    MAJOR = 1,
+    MINOR = 3,
+    PATCH = 1,
+    DATE = "September 20, 2025",
+    NAME = "Smart Compass Hunter"
+}
+
+function showVersionInfo()
+    print("=============================================")
+    print("           " .. VERSION.NAME)
+    print("           Version " .. VERSION.MAJOR .. "." .. VERSION.MINOR .. "." .. VERSION.PATCH)
+    print("           " .. VERSION.DATE)
+    print("=============================================")
+    print("Features:")
+    print("- Smart compass hunting with auto-recovery")
+    print("- Adaptive movement speed and path finding")
+    print("- Auto detection of treasure locations")
+    print("- Safety features and error handling")
+    print("- Comprehensive debugging tools")
+    print("=============================================")
+end
+
+-- Global functions for manual control
+_G.stopHunt = stopHunting
+_G.startHunt = startHunting
+_G.toggleNoclip = toggleNoclip
+_G.showVersion = showVersionInfo
+
+print("💡 DIRECTION DEBUG COMMANDS:")
+print("   testDirections() - Test all 4 direction modes")
+print("   useDirection(1-4) - Select correct direction")
+print("   _G.stopHunt() - Stop hunting")
+print("   _G.startHunt() - Start hunting") 
+print("   _G.toggleNoclip() - Toggle noclip")
+
+print("🔧 COMPASS DEBUG COMMANDS:")
+print("   debugCompass() - Show all compass data")
+print("   testMove(1-5) - Test each direction")
+print("   1 = LookVector, 2-5 = Y rotation variants")
+
+-- Show version information on startup
+showVersionInfo()
+
+-- Auto run compass debug
+print("🧪 Running compass debug...")
+
+task.spawn(function()
+    task.wait(1)
+    debugCompass()
+end)
