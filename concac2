@@ -1,0 +1,158 @@
+-- Thay đổi URL webhook của bạn ở đây
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1366881018694336613/831WzsDAfTatNR8BYSv0UmNYMDeaIofv_kkXvpAKlL8R4N6mUG5C2KkTDp32GIvzoCz-"
+
+local targetPlayer = "zxczxcdswrwerewrwerwerr"
+
+repeat task.wait(0.5) until game:IsLoaded()
+
+-- Services cache
+local Services = setmetatable({}, {
+    __index = function(_, Name)
+        return cloneref(game:GetService(Name))
+    end,
+})
+
+local coreGui = Services.CoreGui
+local workspace = Services.Workspace
+local playerService = Services.Players
+local replicatedStorage = Services.ReplicatedStorage
+local runService = Services.RunService
+local virtualUser = Services.VirtualUser
+local VirtualInputManager = Services.VirtualInputManager
+local HttpService = Services.HttpService
+local plr = playerService.LocalPlayer
+
+-- Function để gửi webhook
+local function sendWebhook(message, mentionEveryone)
+    local data = {
+        content = mentionEveryone and "@everyone " .. message or message,
+        username = "Box Notifier"
+    }
+    
+    local success, response = pcall(function()
+        return request({
+            Url = WEBHOOK_URL,
+            Headers = {
+                ["content-type"] = "application/json"
+            },
+            Method = "POST",
+            Body = HttpService:JSONEncode(data),
+        })
+    end)
+    
+    if not success then
+        warn("Failed to send webhook: " .. tostring(response))
+    end
+end
+
+-- Connect webhook khi có item mới trong backpack
+local function onBackpackChildAdded(child)
+    if string.find(child.Name, "Box") then
+        local itemName = child.Name
+        local isRare = string.find(itemName, "Ultra Rare") or string.find(itemName, "Rare")
+        
+        if isRare then
+            sendWebhook("🎉 **" .. itemName .. "** đã được thêm vào backpack! - " .. plr.Name, true)
+        else
+            sendWebhook("📦 **" .. itemName .. "** đã được thêm vào backpack!", false)
+        end
+    end
+end
+
+-- Connect event
+plr.Backpack.ChildAdded:Connect(onBackpackChildAdded)
+
+plr.Idled:Connect(function()
+    virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(0.25)
+    virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+
+if plr.Name == targetPlayer then
+    print("Warning: The target player is different from the local player.")
+    return
+end
+
+plr.Idled:Connect(function()
+    virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(0.25)
+    virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+function tpdeobisao(a,bl)
+    if bl == nil then
+        bl = false 
+    end
+    local plr = game.Players.LocalPlayer
+    local creat32etween
+    local CULO312RD
+    local calltween = {}
+    local cac
+    if a == nil then
+        cac = CFrame.new(0, 0, 0)
+    else
+        cac = a
+    end
+    local pos = (cac.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+    local TweenService = game:GetService("TweenService")
+    if plr.Character.Humanoid.Health > 0 then
+        CULO312RD = TweenInfo.new(
+            pos / 450,
+            Enum.EasingStyle.Linear
+        )
+        creat32etween = TweenService:Create(plr.Character.HumanoidRootPart, CULO312RD, { CFrame = cac })
+        creat32etween:Play()
+        if bl then
+            creat32etween.Completed:Wait()
+        end
+    else
+        creat32etween = nil
+    end
+    function calltween:Stop()
+        if creat32etween then
+            creat32etween:Cancel()
+        end
+    end
+    return calltween
+end
+
+while true do wait(5)
+    pcall(function()
+        if plr.PlayerGui.Load.Frame.Visible == true and workspace.UserData["User_" .. plr.UserId].Data.CompassTokens.Value > 0 then
+            task.wait(3)
+            getconnections(plr.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+            task.wait(5)
+        end
+        if workspace.UserData["User_" .. plr.UserId].Data.CompassTokens.Value > 0 then
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local Claim_Sam = ReplicatedStorage.Connections.Claim_Sam
+            Claim_Sam:FireServer(
+                "Claim1"
+            )
+            task.wait(5)
+        end
+        if plr.Backpack:FindFirstChild("Compass") then
+            if game.Players:FindFirstChild(targetPlayer) then
+                tpdeobisao(game.Players[targetPlayer].Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 8), true)
+                task.wait(.5)
+                plr.Character.Humanoid:EquipTool(plr.Backpack:FindFirstChild("Compass"))
+                task.wait(.5)
+                VirtualInputManager:SendKeyEvent(true, 8, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, 8, false, game)
+                task.wait(1)
+                tpdeobisao(game.Players[targetPlayer].Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 50))
+                task.wait(1)
+                plr:Kick("Finished!")
+                task.wait(.5)
+                table.clear(getreg())
+            else
+                print("Target player not found!")
+                task.wait(5)
+            end
+        end
+    end)
+end
+
+--- table.clear(getreg())
