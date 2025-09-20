@@ -14,6 +14,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local isHunting = false
 
 function EequipSam()
+    -- Kiểm tra nếu đã có Compass trong character
     if plr.Character:FindFirstChild("Compass") then
         local compassArrow = plr.Character.Compass:FindFirstChild("CompassArrow")
         if compassArrow then
@@ -22,6 +23,18 @@ function EequipSam()
             end)
             
             if success then
+                -- Reset lại trạng thái hunting nếu cần
+                if not isHunting and huntState ~= "SAFE_MODE" then
+                    print("🔄 Compass already equipped and working! Resetting hunt state...")
+                    huntState = "FORWARD"
+                    compass = plr.Character.Compass
+                    
+                    -- Delay một chút để khởi động lại hunting
+                    task.spawn(function()
+                        task.wait(0.2)
+                        smartCompassHunt()
+                    end)
+                end
                 return true
             end
         end
@@ -32,7 +45,7 @@ function EequipSam()
     
     for i, v in pairs(plr.Backpack:GetChildren()) do
         if v.Name == "Compass" then
-            isHunting = true
+            print("🧭 Found Compass in backpack! Setting up hunting...")
             compassTool = v
             foundCompass = true
             break
@@ -76,6 +89,21 @@ function EequipSam()
     
     if verifySuccess then
         compass = plr.Character.Compass
+        
+        -- Reset hunting state và khởi động lại quá trình săn
+        if huntState ~= "SAFE_MODE" then
+            print("✅ Compass verified and working! Setting up hunt...")
+            huntState = "FORWARD"
+            
+            -- Đảm bảo khởi động hunting nếu nó chưa bắt đầu
+            if not isHunting then
+                task.spawn(function()
+                    task.wait(0.2) -- Chờ một chút để tránh xung đột
+                    smartCompassHunt()
+                end)
+            end
+        end
+        
         return true
     else
         return false
@@ -86,7 +114,18 @@ end
 spawn(function()
     while not _G.stopclick do 
         task.wait(0.1)
-        EequipSam()
+        local equipped = EequipSam()
+        
+        -- Kiểm tra compass đã được trang bị, nếu có thì bắt đầu săn nếu chưa đang săn
+        if equipped and character:FindFirstChild("Compass") then
+            if not isHunting then
+                print("🔄 Compass detected in character but hunting not active! Starting hunt...")
+                task.spawn(function()
+                    smartCompassHunt()
+                end)
+            end
+        end
+        
         game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
     end
 end)
@@ -109,6 +148,15 @@ local function getCompass()
     end
     
     local compassFolder = character.Compass
+    
+    -- Compass found, check if hunting needs to be restarted
+    if not isHunting and huntState ~= "SAFE_MODE" then
+        task.spawn(function()
+            print("🧭 Compass found in getCompass(). Ensuring hunting is active...")
+            task.wait(0.5)
+            checkAndStartHunt()
+        end)
+    end
     if not compassFolder:FindFirstChild("CompassArrow") then
         return nil
     end
@@ -495,6 +543,8 @@ function startCompassMonitoring()
             task.wait(3) -- Kiểm tra compass mỗi 3 giây (tăng tần suất)
             
             if isHunting then
+                -- Reset status check timer trong quá trình săn tìm
+                statusCheckTimer = 0
                 -- Kiểm tra compass còn hoạt động không
                 local compassCheck = getCompass()
                 if not compassCheck then
@@ -1171,9 +1221,6 @@ function smartCompassHunt()
     -- Cancel any existing hunts first to ensure clean start
     if isHunting then
         print("⚠️ Hunt already in progress. Resetting for clean start...")
-        isHunting = false
-        huntState = "FORWARD"
-        compassHistory = {}
         
         -- Cancel any existing tweens
         if currentTween then
@@ -1191,16 +1238,37 @@ function smartCompassHunt()
         task.wait(0.5)
     end
     
-    local equippedCompass = EequipSam()
-    if not equippedCompass then
-        print("❌ Failed to equip compass. Hunt aborted.")
-        return
+    -- Kiểm tra xem đã có sẵn compass trong character chưa
+    if plr.Character:FindFirstChild("Compass") then
+        local compassArrow = plr.Character.Compass:FindFirstChild("CompassArrow")
+        if compassArrow then
+            local success, _ = pcall(function()
+                return compassArrow.Rotation
+            end)
+            
+            if success then
+                compass = compassArrow
+                print("✅ Compass already equipped and working!")
+                -- Tiếp tục với compass đã có
+            else
+                print("⚠️ Compass found but not functioning properly. Trying to re-equip...")
+            end
+        end
     end
     
-    compass = getCompass()
+    -- Nếu không có compass hoặc compass không hoạt động, thử trang bị mới
     if not compass then
-        print("❌ Compass not found after equipping. Hunt aborted.")
-        return
+        local equippedCompass = EequipSam()
+        if not equippedCompass then
+            print("❌ Failed to equip compass. Hunt aborted.")
+            return
+        end
+        
+        compass = getCompass()
+        if not compass then
+            print("❌ Compass not found after equipping. Hunt aborted.")
+            return
+        end
     end
     
     local initialAngle = getCompassDirection()
@@ -1208,6 +1276,14 @@ function smartCompassHunt()
         print("❌ Cannot read compass angle. Hunt aborted.")
         return
     end
+    
+    -- Set hunting flags
+    isHunting = true
+    huntState = "FORWARD"
+    compassHistory = {}
+    
+    -- Reset status check timer
+    statusCheckTimer = 0
     
     startCompassMonitoring()
     enableNoclip()
@@ -1971,11 +2047,54 @@ end
 print("AUTO-STARTING SMART COMPASS HUNT IN 2 SECONDS...")
 print("Safety check: Ensuring compass is equipped...")
 
+-- Global variable to track status check timer
+local statusCheckTimer = 0
+
+-- Function to check compass and start hunt if needed
+function checkAndStartHunt()
+    if isHunting then
+        -- Kiểm tra xem săn có đang hoạt động không
+        statusCheckTimer = statusCheckTimer + 1
+        
+        -- Nếu trạng thái săn không thay đổi trong 60 giây, hãy khởi động lại
+        if statusCheckTimer > 12 then  -- 12 * 5 seconds = 60 seconds
+            print("⚠️ Hunt seems stuck. Restarting...")
+            isHunting = false
+            huntState = "FORWARD"
+            if currentTween then
+                currentTween:Cancel()
+                currentTween = nil
+            end
+            statusCheckTimer = 0
+        end
+    else
+        statusCheckTimer = 0
+        
+        -- Kiểm tra xem đã có compass chưa
+        if plr.Character and plr.Character:FindFirstChild("Compass") then
+            print("🔄 Compass found, starting hunt...")
+            task.wait(1)
+            smartCompassHunt()
+        else
+            print("🔍 No compass equipped, trying to equip one...")
+            task.wait(1)
+            smartCompassHunt()
+        end
+    end
+end
+
 -- Perform initial safety check
 if performSafetyCheck() then
     print("Initial safety check passed!")
     wait(2)
     smartCompassHunt()
+    
+    -- Set up periodic checking
+    spawn(function()
+        while wait(5) do
+            checkAndStartHunt()
+        end
+    end)
 else
     print("Initial safety check failed - please equip compass and restart")
 end
