@@ -1,5 +1,5 @@
 -- Thay đổi URL webhook của bạn ở đây
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1366881018694336613/831WzsDAfTatNR8BYSv0UmNYMDeaIofv_kkXvpAKlL8R4N6mUG5C2KkTDp32GIvzoCz-"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1135088133373968444/Xnxh34duCR5OxHaDki1hSyrSR8rxtojCQGoZuh4BwVttVTZVBRuOvnfXwDTfsoyubxE0"
 
 local targetPlayer = "zxczxcdswrwerewrwerwerr"
 
