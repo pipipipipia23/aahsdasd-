@@ -47,16 +47,7 @@ end
 
 -- Connect webhook khi có item mới trong backpack
 local function onBackpackChildAdded(child)
-    if string.find(child.Name, "Box") then
-        local itemName = child.Name
-        local isRare = string.find(itemName, "Ultra Rare") or string.find(itemName, "Rare")
-        
-        if isRare then
-            sendWebhook("🎉 **" .. itemName .. "** đã được thêm vào backpack! - " .. plr.Name, true)
-        else
-            sendWebhook("📦 **" .. itemName .. "** đã được thêm vào backpack!", false)
-        end
-    end
+    sendWebhook("🎉 **" .. child.Name .. "** đã được thêm vào backpack!", true)
 end
 
 -- Connect event
