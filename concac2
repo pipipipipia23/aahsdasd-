@@ -47,7 +47,7 @@ end
 
 -- Connect webhook khi có item mới trong backpack
 local function onBackpackChildAdded(child)
-    sendWebhook("🎉 **" .. child.Name .. "** đã được thêm vào backpack!", false)
+    sendWebhook("🎉 **" .. child.Name .. "** đã được thêm vào backpack! - ".. plr.Name, false)
 end
 
 -- Connect event
