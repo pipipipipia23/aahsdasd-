@@ -1,5 +1,5 @@
 -- Thay đổi URL webhook của bạn ở đây
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1135088133373968444/Xnxh34duCR5OxHaDki1hSyrSR8rxtojCQGoZuh4BwVttVTZVBRuOvnfXwDTfsoyubxE0"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1421258453099216991/8BvwZ-uawO9HfDJHFX82_iMxmiSFq3uMaDLyIPO4Edo7ROgVRGso5kTPQPzMKGRID4y9"
 
 local targetPlayer = "zxczxcdswrwerewrwerwerr"
 
@@ -45,13 +45,197 @@ local function sendWebhook(message, mentionEveryone)
     end
 end
 
--- Connect webhook khi có item mới trong backpack
-local function onBackpackChildAdded(child)
-    sendWebhook("🎉 **" .. child.Name .. "** đã được thêm vào backpack! - ".. plr.Name, false)
+-- Webhook flags để tránh spam
+local webhookFlags = {}
+local currentNotifications = {}
+local currentBoxes = {} -- Track all boxes with priority
+
+-- Fullscreen notification system
+local screenGui = nil
+local notificationFrame = nil
+
+local function createNotificationScreen()
+    if screenGui then return end
+    
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BoxNotificationGui"
+    screenGui.Parent = coreGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    notificationFrame = Instance.new("Frame")
+    notificationFrame.Name = "NotificationFrame"
+    notificationFrame.Parent = screenGui
+    notificationFrame.Size = UDim2.new(1, 0, 1, 0)
+    notificationFrame.Position = UDim2.new(0, 0, 0, 0)
+    notificationFrame.BackgroundTransparency = 0.3
+    notificationFrame.BorderSizePixel = 0
+    notificationFrame.Visible = false
+    
+    -- Text label for notification
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "NotificationText"
+    textLabel.Parent = notificationFrame
+    textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+    textLabel.Position = UDim2.new(0.1, 0, 0.35, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = ""
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    
+    -- Click to dismiss
+    local clickButton = Instance.new("TextButton")
+    clickButton.Name = "ClickToDismiss"
+    clickButton.Parent = notificationFrame
+    clickButton.Size = UDim2.new(1, 0, 1, 0)
+    clickButton.Position = UDim2.new(0, 0, 0, 0)
+    clickButton.BackgroundTransparency = 1
+    clickButton.Text = ""
+    
+    clickButton.MouseButton1Click:Connect(function()
+        notificationFrame.Visible = false
+    end)
 end
 
--- Connect event
-plr.Backpack.ChildAdded:Connect(onBackpackChildAdded)
+local function getBoxPriority(itemName)
+    if string.find(itemName, "Ultra Rare") then
+        return 3 -- Highest priority
+    elseif string.find(itemName, "Rare") then
+        return 2 -- Medium priority
+    else
+        return 1 -- Lowest priority (Common)
+    end
+end
+
+local function updateNotificationDisplay()
+    if not next(currentBoxes) then
+        if notificationFrame then
+            notificationFrame.Visible = false
+        end
+        return
+    end
+    
+    -- Find highest priority box to display
+    local highestPriority = 0
+    local displayBox = nil
+    local boxCount = {ultraRare = 0, rare = 0, common = 0}
+    
+    for boxName, _ in pairs(currentBoxes) do
+        local priority = getBoxPriority(boxName)
+        if priority > highestPriority then
+            highestPriority = priority
+            displayBox = boxName
+        end
+        
+        -- Count boxes by type
+        if priority == 3 then
+            boxCount.ultraRare = boxCount.ultraRare + 1
+        elseif priority == 2 then
+            boxCount.rare = boxCount.rare + 1
+        else
+            boxCount.common = boxCount.common + 1
+        end
+    end
+    
+    if displayBox then
+        createNotificationScreen()
+        
+        -- Create summary text
+        local summaryText = ""
+        if boxCount.ultraRare > 0 then
+            summaryText = summaryText .. "🔥 Ultra Rare: " .. boxCount.ultraRare .. " "
+        end
+        if boxCount.rare > 0 then
+            summaryText = summaryText .. "✨ Rare: " .. boxCount.rare .. " "
+        end
+        if boxCount.common > 0 then
+            summaryText = summaryText .. "📦 Common: " .. boxCount.common .. " "
+        end
+        
+        if highestPriority == 3 then -- Ultra Rare
+            notificationFrame.BackgroundColor3 = Color3.new(1, 0, 0) -- Red
+            notificationFrame.NotificationText.Text = "🔥 ULTRA RARE BOX! 🔥\n" .. displayBox .. "\n\n" .. summaryText
+        elseif highestPriority == 2 then -- Rare
+            notificationFrame.BackgroundColor3 = Color3.new(0, 1, 0) -- Green
+            notificationFrame.NotificationText.Text = "✨ RARE BOX! ✨\n" .. displayBox .. "\n\n" .. summaryText
+        else -- Common
+            notificationFrame.BackgroundColor3 = Color3.new(1, 1, 1) -- White
+            notificationFrame.NotificationText.Text = "📦 COMMON BOX 📦\n" .. displayBox .. "\n\n" .. summaryText
+        end
+        
+        -- Only show if window is not focused
+        if not game:GetService("UserInputService").WindowFocused then
+            notificationFrame.Visible = true
+        end
+    end
+end
+
+game:GetService("UserInputService").WindowFocused:Connect(function()
+    -- Hide when focused
+    if notificationFrame then
+        notificationFrame.Visible = false
+    end
+end)
+
+game:GetService("UserInputService").WindowFocusReleased:Connect(function()
+    -- Update display when window loses focus
+    updateNotificationDisplay()
+end)
+
+-- Continuous inventory scanning
+local function scanInventory()
+    local inventory = plr.Backpack:GetChildren()
+    local newCurrentBoxes = {}
+    
+    -- Scan current inventory
+    for _, item in pairs(inventory) do
+        if string.find(item.Name, "Box") then
+            newCurrentBoxes[item.Name] = true
+            
+            -- Check if this box hasn't been notified yet
+            if not webhookFlags[item.Name] then
+                webhookFlags[item.Name] = true
+                
+                local itemName = item.Name
+                local isUltraRare = string.find(itemName, "Ultra Rare")
+                local isRare = string.find(itemName, "Rare") and not isUltraRare
+                
+                if isUltraRare then
+                    sendWebhook("🔥 **ULTRA RARE!** " .. itemName .. " đã được tìm thấy! - " .. plr.Name, true)
+                elseif isRare then
+                    sendWebhook("✨ **RARE!** " .. itemName .. " đã được tìm thấy! - " .. plr.Name, true)
+                else
+                    sendWebhook("📦 **" .. itemName .. "** đã được tìm thấy!", false)
+                end
+            end
+        end
+    end
+    
+    -- Update current boxes
+    currentBoxes = newCurrentBoxes
+    
+    -- Reset flags for boxes that are no longer in inventory
+    for boxName, _ in pairs(webhookFlags) do
+        if not currentBoxes[boxName] then
+            webhookFlags[boxName] = nil
+            currentNotifications[boxName] = nil
+            print("Reset flag for: " .. boxName)
+        end
+    end
+    
+    -- Update notification display based on current boxes
+    updateNotificationDisplay()
+end
+
+-- Start continuous scanning
+task.spawn(function()
+    while true do
+        pcall(scanInventory)
+        task.wait(1) -- Scan every 1 second
+    end
+end)
 
 plr.Idled:Connect(function()
     virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
