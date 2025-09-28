@@ -45,10 +45,11 @@ local function sendWebhook(message, mentionEveryone)
     end
 end
 
--- Webhook flags để tránh spam
+-- Webhook flags để tránh spam (dùng instance thay vì name)
 local webhookFlags = {}
 local currentNotifications = {}
 local currentBoxes = {} -- Track all boxes with priority
+local trackedInstances = {} -- Track actual item instances
 
 -- Fullscreen notification system
 local screenGui = nil
@@ -188,15 +189,17 @@ end)
 local function scanInventory()
     local inventory = plr.Backpack:GetChildren()
     local newCurrentBoxes = {}
+    local currentInstances = {}
     
     -- Scan current inventory
     for _, item in pairs(inventory) do
         if string.find(item.Name, "Box") then
             newCurrentBoxes[item.Name] = true
+            currentInstances[item] = true
             
-            -- Check if this box hasn't been notified yet
-            if not webhookFlags[item.Name] then
-                webhookFlags[item.Name] = true
+            -- Check if this specific instance hasn't been notified yet
+            if not webhookFlags[item] then
+                webhookFlags[item] = true
                 
                 local itemName = item.Name
                 local isUltraRare = string.find(itemName, "Ultra Rare")
@@ -216,12 +219,11 @@ local function scanInventory()
     -- Update current boxes
     currentBoxes = newCurrentBoxes
     
-    -- Reset flags for boxes that are no longer in inventory
-    for boxName, _ in pairs(webhookFlags) do
-        if not currentBoxes[boxName] then
-            webhookFlags[boxName] = nil
-            currentNotifications[boxName] = nil
-            print("Reset flag for: " .. boxName)
+    -- Clean up flags for instances that no longer exist
+    for instance, _ in pairs(webhookFlags) do
+        if not currentInstances[instance] then
+            webhookFlags[instance] = nil
+            print("Reset flag for instance: " .. tostring(instance))
         end
     end
     
