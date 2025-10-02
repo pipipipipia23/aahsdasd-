@@ -46,7 +46,7 @@ if workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.
         end)
     end
 else
-    if not workspace:FindFirstChild("Luck Fruit") then
+    if not workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value == "None"  then
         local PlaceID = game.PlaceId
         
         local function decode(data)
