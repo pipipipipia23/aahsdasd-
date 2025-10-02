@@ -38,7 +38,7 @@ if workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.
                 game:GetService("VirtualUser"):ClickButton1(Vector1.new(99999, 99999));
                 task.wait(1)
                 getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
-                task.wait(1)
+                task.wait(5)
             end
         end)
     end
