@@ -179,8 +179,9 @@ pcall(function()
     end
 end)
 
-while true do task.wait(10)
+while true do task.wait(5)
     local a,b = pcall(function()
+        setfpscap(1)
         if workspace.UserData["User_" .. plr.UserId].Data.CompassTokens.Value > 0 then
             if workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value ~= "None" then
                 writefile(plr.Name..".txt", "Completed-" .. "DoneCompassLuck")
