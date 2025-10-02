@@ -19,134 +19,157 @@ pcall(function()
     UserSettings().GameSettings.SavedQualitySetting = Enum.SavedQualitySetting.QualityLevel1
 end)
 
-print("SUCVAT")
+print("Starting One Piece Mythical Script...")
 
-if workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value == "None" then
-    print("DCAC")
-    while workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value == "None" do task.wait(5)
+local function hasDevilFruit()
+    return workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value ~= "None"
+end
+
+local function hasLuckFruit()
+    return workspace:FindFirstChild("Luck Fruit")
+end
+
+-- Function to handle luck fruit consumption
+local function consumeLuckFruit()
+    print("Found Luck Fruit - Starting consumption process")
+    
+    while hasLuckFruit() and not hasDevilFruit() do
+        task.wait(2)
         pcall(function()
-            if game.Players.LocalPlayer.PlayerGui.Load.Frame.Visible then
-                task.wait(3);
-                getconnections(game.Players.LocalPlayer.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+            -- Handle loading screen
+            if plr.PlayerGui.Load.Frame.Visible then
+                task.wait(3)
+                getconnections(plr.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+                return
+            end
+            
+            -- Consume fruit if in backpack
+            local fruitTool = plr.Backpack:FindFirstChild("Luck Fruit")
+            if fruitTool then
+                plr.Character.Humanoid:EquipTool(fruitTool)
+                task.wait(1)
+                game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+                task.wait(1)
+                getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
+                task.wait(3)
             else
-                if plr.Backpack:FindFirstChild("Luck Fruit") then
-                    plr.Character.Humanoid:EquipTool(plr.Backpack:FindFirstChild("Luck Fruit"))
-                    task.wait(1)
-                    game:GetService("VirtualUser"):ClickButton1(Vector1.new(99999, 99999));
-                    task.wait(1)
-                    getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
-                    task.wait(5)
-                else
-                    plr.Character.HumanoidRootPart.CFrame = workspace["Luck Fruit"].Main1.CFrame
-                    task.wait(1)
-                    fireclickdetector(workspace["Luck Fruit"].Main1.ClickDetector)
-                    task.wait(1)
+                -- Teleport to and collect fruit
+                local luckFruit = workspace:FindFirstChild("Luck Fruit")
+                if luckFruit and luckFruit:FindFirstChild("Main1") then
+                    plr.Character.HumanoidRootPart.CFrame = luckFruit.Main1.CFrame
+                    task.wait(0.5)
+                    fireclickdetector(luckFruit.Main1.ClickDetector)
+                    task.wait(0.5)
                 end
             end
         end)
     end
-else
-    if not workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value == "None"  then
-        local PlaceID = game.PlaceId
-        
-        local function decode(data)
-            if not data then return {} end
-            return HttpService:JSONDecode(data)
-        end
+    
+    print("Luck Fruit consumption completed or no longer available")
+end
 
-        local function encode(data)
-            if not data then return {} end
-            return HttpService:JSONEncode(data)
-        end
-
-        local function isSite()
-            if isfile("Server_Shared.txt") then
-                local success, data = pcall(function()
-                    return decode(readfile("Server_Shared.txt"))
-                end)
-                if not success then return false end
-                if tick() - data.timestamp >= 60 * 3 then
-                    return false
-                else
-                    return data 
-                end
-            end
-            return false
-        end
-
-        local function HopSvLogic(listserver)
-            local servers = {}
-            for _, server in ipairs(listserver) do
-                if server.id ~= game.JobId then
-                    table.insert(servers, server.id)
-                end
-            end
-
-            if #servers > 0 then
-                for i = #servers, 2, -1 do
-                    local j = math.random(i)
-                    servers[i], servers[j] = servers[j], servers[i]
-                end
-                
-                for i, serverId in ipairs(servers) do
-                    print("Teleporting to server: " .. serverId)
-                    game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, serverId)
-                    task.wait(0.5)
-                end
-            end
-
-            task.wait(5)
-            local ts = game:GetService("TeleportService")
-            ts:Teleport(game.PlaceId, plr)
-        end
-
-        local function setUpHopSv()
-            local success, result = pcall(function()
-                local cachedData = isSite()
-                
-                if not cachedData then
-                    local response = game:HttpGet('https://games.roblox.com/v1/games/137595477352660/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100')
-                    local serverData = decode(response)
-                    
-                    if serverData and serverData.data and #serverData.data > 0 then
-                        local savedata = {
-                            timestamp = tick(),
-                            serverlist = serverData.data
-                        }
-                        writefile("Server_Shared.txt", encode(savedata))
-                        return serverData.data
-                    else
-                        return nil
-                    end
-                else
-                    if cachedData.serverlist and #cachedData.serverlist > 0 then
-                        return cachedData.serverlist
-                    else
-                        return nil
-                    end
-                end
-            end)
-            
-            if success and result and #result > 0 then
-                HopSvLogic(result)
-            else
-                task.wait(5)
-                HopSvLogic({})
-            end
-        end
-
-        setUpHopSv()
+-- Main logic
+if hasLuckFruit() and not hasDevilFruit() then
+    consumeLuckFruit()
+elseif not hasLuckFruit() and not hasDevilFruit() then
+    print("No Luck Fruit found - Starting server hop to find one")
+    
+    -- Server hopping helper functions
+    local function decode(data)
+        return data and HttpService:JSONDecode(data) or {}
     end
+
+    local function encode(data)
+        return data and HttpService:JSONEncode(data) or "{}"
+    end
+
+    local function getCachedServers()
+        if not isfile("Server_Shared.txt") then return false end
+        
+        local success, data = pcall(function()
+            return decode(readfile("Server_Shared.txt"))
+        end)
+        
+        if not success or not data.timestamp then return false end
+        
+        -- Cache valid for 3 minutes
+        if tick() - data.timestamp >= 180 then return false end
+        
+        return data
+    end
+
+    local function shuffleAndTeleport(servers)
+        local validServers = {}
+        
+        -- Filter out current server
+        for _, server in ipairs(servers) do
+            if server.id ~= game.JobId then
+                table.insert(validServers, server.id)
+            end
+        end
+        
+        if #validServers == 0 then
+            print("No valid servers found - Random teleport")
+            game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+            return
+        end
+        
+        -- Shuffle servers for random selection
+        for i = #validServers, 2, -1 do
+            local j = math.random(i)
+            validServers[i], validServers[j] = validServers[j], validServers[i]
+        end
+        
+        -- Try teleporting to first server
+        local targetServer = validServers[1]
+        print("Teleporting to server: " .. targetServer)
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, targetServer)
+        
+        -- Fallback after delay
+        task.wait(5)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+    end
+
+    local function startServerHop()
+        local success, result = pcall(function()
+            local cachedData = getCachedServers()
+            
+            if cachedData and cachedData.serverlist then
+                print("Using cached server list")
+                return cachedData.serverlist
+            end
+            
+            print("Fetching fresh server list...")
+            local response = game:HttpGet('https://games.roblox.com/v1/games/137595477352660/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100')
+            local serverData = decode(response)
+            
+            if serverData and serverData.data and #serverData.data > 0 then
+                local cacheData = {
+                    timestamp = tick(),
+                    serverlist = serverData.data
+                }
+                writefile("Server_Shared.txt", encode(cacheData))
+                return serverData.data
+            end
+            
+            return {}
+        end)
+        
+        if success and result and #result > 0 then
+            shuffleAndTeleport(result)
+        else
+            print("Failed to get server list - Random teleport")
+            task.wait(3)
+            game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+        end
+    end
+    
+    startServerHop()
+else
+    print("Player already has Devil Fruit - Script completed")
 end
 
 pcall(function()
-    for k,v in workspace:GetChildren() do 
-        if v.Name ~= plr.Name and v.Name ~= "Camera" and v.Name ~= "UserData" then 
-            pcall(function() 
-                v:Destroy()
-            end)
-        end
-    end
     pcall(function() 
         plr.PlayerScripts.Scripts:Destroy()
     end)
