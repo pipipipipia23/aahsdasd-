@@ -1,0 +1,166 @@
+-- Thay đổi URL webhook của bạn ở đây
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1366881018694336613/831WzsDAfTatNR8BYSv0UmNYMDeaIofv_kkXvpAKlL8R4N6mUG5C2KkTDp32GIvzoCz-"
+
+local HttpService = game:GetService("HttpService")
+
+local plr = game.Players.LocalPlayer
+
+-- Connect event
+
+plr.Idled:Connect(function()
+    virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(0.25)
+    virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    UserSettings().GameSettings.MasterVolume = 0
+    UserSettings().GameSettings.SavedQualitySetting = Enum.SavedQualitySetting.QualityLevel1
+end)
+
+print("SUCVAT")
+
+if workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value == "None" then
+    print("DCAC")
+    while workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value == "None" do task.wait(5)
+        pcall(function()
+            if game.Players.LocalPlayer.PlayerGui.Load.Frame.Visible then
+                task.wait(3);
+                getconnections(game.Players.LocalPlayer.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+            else
+                plr.Character.HumanoidRootPart.CFrame = workspace["Luck Fruit"].Main1.CFrame
+                task.wait(1)
+                fireclickdetector(workspace["Luck Fruit"].Main1.ClickDetector)
+                task.wait(1)
+                plr.Character.Humanoid:EquipTool(plr.Backpack:FindFirstChild("Luck Fruit"))
+                task.wait(1)
+                game:GetService("VirtualUser"):ClickButton1(Vector1.new(99999, 99999));
+                task.wait(1)
+                getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
+                task.wait(1)
+            end
+        end)
+    end
+else
+    if not workspace:FindFirstChild("Luck Fruit") then
+        local PlaceID = game.PlaceId
+        
+        local function decode(data)
+            if not data then return {} end
+            return HttpService:JSONDecode(data)
+        end
+
+        local function encode(data)
+            if not data then return {} end
+            return HttpService:JSONEncode(data)
+        end
+
+        local function isSite()
+            if isfile("Server_Shared.txt") then
+                local success, data = pcall(function()
+                    return decode(readfile("Server_Shared.txt"))
+                end)
+                if not success then return false end
+                if tick() - data.timestamp >= 60 * 3 then
+                    return false
+                else
+                    return data 
+                end
+            end
+            return false
+        end
+
+        local function HopSvLogic(listserver)
+            local servers = {}
+            for _, server in ipairs(listserver) do
+                if server.id ~= game.JobId then
+                    table.insert(servers, server.id)
+                end
+            end
+
+            if #servers > 0 then
+                for i = #servers, 2, -1 do
+                    local j = math.random(i)
+                    servers[i], servers[j] = servers[j], servers[i]
+                end
+                
+                for i, serverId in ipairs(servers) do
+                    print("Teleporting to server: " .. serverId)
+                    game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, serverId)
+                    task.wait(0.5)
+                end
+            end
+
+            task.wait(5)
+            local ts = game:GetService("TeleportService")
+            ts:Teleport(game.PlaceId, plr)
+        end
+
+        local function setUpHopSv()
+            local success, result = pcall(function()
+                local cachedData = isSite()
+                
+                if not cachedData then
+                    local response = game:HttpGet('https://games.roblox.com/v1/games/137595477352660/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100')
+                    local serverData = decode(response)
+                    
+                    if serverData and serverData.data and #serverData.data > 0 then
+                        local savedata = {
+                            timestamp = tick(),
+                            serverlist = serverData.data
+                        }
+                        writefile("Server_Shared.txt", encode(savedata))
+                        return serverData.data
+                    else
+                        return nil
+                    end
+                else
+                    if cachedData.serverlist and #cachedData.serverlist > 0 then
+                        return cachedData.serverlist
+                    else
+                        return nil
+                    end
+                end
+            end)
+            
+            if success and result and #result > 0 then
+                HopSvLogic(result)
+            else
+                task.wait(5)
+                HopSvLogic({})
+            end
+        end
+
+        setUpHopSv()
+    end
+end
+
+pcall(function()
+    for k,v in workspace:GetChildren() do 
+        if v.Name ~= plr.Name and v.Name ~= "Camera" and v.Name ~= "UserData" then 
+            pcall(function() 
+                v:Destroy()
+            end)
+        end
+    end
+    pcall(function() 
+        plr.PlayerScripts.Scripts:Destroy()
+    end)
+    
+    for k,v in plr.PlayerGui:GetChildren() do
+        v:Destroy()
+    end
+end)
+
+while true do task.wait(10)
+    local a,b = pcall(function()
+        if workspace.UserData["User_" .. plr.UserId].Data.CompassTokens.Value > 0 then
+            if workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value ~= "None" then
+                writefile(plr.Name..".txt", "Completed-" .. "DoneCompassLuck")
+            else
+                writefile(plr.Name..".txt", "Completed-" .. "DoneCompass")
+            end
+        end
+    end)
+end
