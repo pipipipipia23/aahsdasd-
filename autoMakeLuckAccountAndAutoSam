@@ -29,16 +29,19 @@ if workspace:FindFirstChild("Luck Fruit") and workspace.UserData["User_" .. plr.
                 task.wait(3);
                 getconnections(game.Players.LocalPlayer.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
             else
-                plr.Character.HumanoidRootPart.CFrame = workspace["Luck Fruit"].Main1.CFrame
-                task.wait(1)
-                fireclickdetector(workspace["Luck Fruit"].Main1.ClickDetector)
-                task.wait(1)
-                plr.Character.Humanoid:EquipTool(plr.Backpack:FindFirstChild("Luck Fruit"))
-                task.wait(1)
-                game:GetService("VirtualUser"):ClickButton1(Vector1.new(99999, 99999));
-                task.wait(1)
-                getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
-                task.wait(5)
+                if plr.Backpack:FindFirstChild("Luck Fruit") then
+                    plr.Character.Humanoid:EquipTool(plr.Backpack:FindFirstChild("Luck Fruit"))
+                    task.wait(1)
+                    game:GetService("VirtualUser"):ClickButton1(Vector1.new(99999, 99999));
+                    task.wait(1)
+                    getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
+                    task.wait(5)
+                else
+                    plr.Character.HumanoidRootPart.CFrame = workspace["Luck Fruit"].Main1.CFrame
+                    task.wait(1)
+                    fireclickdetector(workspace["Luck Fruit"].Main1.ClickDetector)
+                    task.wait(1)
+                end
             end
         end)
     end
