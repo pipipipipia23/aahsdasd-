@@ -2,11 +2,13 @@
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1366881018694336613/831WzsDAfTatNR8BYSv0UmNYMDeaIofv_kkXvpAKlL8R4N6mUG5C2KkTDp32GIvzoCz-"
 
 local HttpService = game:GetService("HttpService")
+local virtualUser = game:GetService("VirtualUser")
 
 local plr = game.Players.LocalPlayer
 
--- Connect event
+repeat task.wait(0.5) until game:IsLoaded()
 
+-- Connect event
 plr.Idled:Connect(function()
     virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
     task.wait(0.25)
@@ -21,6 +23,12 @@ end)
 
 print("Starting One Piece Mythical Script...")
 
+repeat wait() until workspace:FindFirstChild("UserData")
+repeat wait() until plr:FindFirstChild("PlayerGui")
+repeat wait() until workspace:FindFirstChild("Chests")
+repeat wait() until plr:FindFirstChild("Backpack")
+repeat wait() until workspace.UserData:FindFirstChild("User_" .. plr.UserId)
+
 local function hasDevilFruit()
     return workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value ~= "None"
 end
@@ -29,146 +37,494 @@ local function hasLuckFruit()
     return workspace:FindFirstChild("Luck Fruit")
 end
 
+-- Check if player has Luck Fruit in backpack but no Devil Fruit
+local function hasLuckFruitInBackpack()
+    return plr.Backpack:FindFirstChild("Luck Fruit") ~= nil
+end
+
 -- Function to handle luck fruit consumption
 local function consumeLuckFruit()
     print("Found Luck Fruit - Starting consumption process")
     
-    while hasLuckFruit() and not hasDevilFruit() do
-        task.wait(2)
-        pcall(function()
-            -- Handle loading screen
+    local maxAttempts = 50 -- Tối đa 50 lần thử (khoảng 5 phút)
+    local attempts = 0
+    
+    while (hasLuckFruit() or hasLuckFruitInBackpack()) and not hasDevilFruit() and attempts < maxAttempts do
+        attempts = attempts + 1
+        task.wait(3)
+        
+        local success = pcall(function()
+            -- Handle loading screen first
             if plr.PlayerGui.Load.Frame.Visible then
-                task.wait(3)
+                print("Loading screen detected - clicking load button")
+                task.wait(2)
                 getconnections(plr.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+                task.wait(3)
                 return
             end
             
-            -- Consume fruit if in backpack
+            -- Priority 1: Check if fruit is in backpack to equip first
             local fruitTool = plr.Backpack:FindFirstChild("Luck Fruit")
             if fruitTool then
+                print("Found Luck Fruit in backpack - equipping")
                 plr.Character.Humanoid:EquipTool(fruitTool)
-                task.wait(1)
+                task.wait(2) -- Wait longer for equip
+                return -- Let next loop handle consumption
+            end
+            
+            -- Priority 2: Check if fruit is equipped in character
+            local equippedFruit = plr.Character:FindFirstChild("Luck Fruit")
+            if equippedFruit then
+                print("Fruit equipped - attempting to consume")
+                local oldDevilFruit = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                
+                -- Consume the fruit
                 game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
-                task.wait(1)
-                getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
-                task.wait(3)
+                task.wait(2)
+                
+                -- Check if GUI appeared and click it
+                if plr.PlayerGui:FindFirstChild("GiverGUI") and plr.PlayerGui.GiverGUI.ImageLabel.Frame:FindFirstChild("1") then
+                    print("Consumption GUI found - clicking accept")
+                    getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
+                    task.wait(3)
+                    
+                    -- Verify consumption worked
+                    local newDevilFruit = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                    if newDevilFruit ~= oldDevilFruit and newDevilFruit ~= "None" then
+                        print("SUCCESS: Devil Fruit consumed! Got: " .. newDevilFruit)
+                        return true
+                    end
+                end
             else
-                -- Teleport to and collect fruit
+                -- Priority 3: Teleport to and collect fruit from world if no fruit in inventory
                 local luckFruit = workspace:FindFirstChild("Luck Fruit")
                 if luckFruit and luckFruit:FindFirstChild("Main1") then
+                    print("Teleporting to collect fruit from world")
                     plr.Character.HumanoidRootPart.CFrame = luckFruit.Main1.CFrame
-                    task.wait(0.5)
+                    task.wait(1)
                     fireclickdetector(luckFruit.Main1.ClickDetector)
-                    task.wait(0.5)
+                    task.wait(3) -- Wait for collection
+                    
+                    -- After collecting, try to equip immediately
+                    local collectedFruit = plr.Backpack:FindFirstChild("Luck Fruit")
+                    if collectedFruit then
+                        print("Fruit collected successfully - equipping immediately")
+                        plr.Character.Humanoid:EquipTool(collectedFruit)
+                        task.wait(2)
+                        
+                        -- Try to consume immediately after equipping
+                        local equipped = plr.Character:FindFirstChild("Luck Fruit")
+                        if equipped then
+                            print("Fruit equipped after collection - consuming immediately")
+                            local oldDF = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                            
+                            game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+                            task.wait(2)
+                            
+                            if plr.PlayerGui:FindFirstChild("GiverGUI") and plr.PlayerGui.GiverGUI.ImageLabel.Frame:FindFirstChild("1") then
+                                print("Consumption GUI appeared - clicking accept")
+                                getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
+                                task.wait(3)
+                                
+                                local newDF = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                                if newDF ~= oldDF and newDF ~= "None" then
+                                    print("SUCCESS: Consumed fruit after collection! Got: " .. newDF)
+                                    return true
+                                end
+                            end
+                        end
+                    else
+                        print("Failed to collect fruit - will retry")
+                    end
+                else
+                    print("No Luck Fruit found anywhere - will retry")
                 end
             end
         end)
+        
+        if not success then
+            print("Error in consumption attempt " .. attempts)
+        end
+        
+        -- Check if we got devil fruit
+        if hasDevilFruit() then
+            print("Devil Fruit acquired! Consumption successful!")
+            break
+        end
+        
+        print("Attempt " .. attempts .. "/" .. maxAttempts .. " - Devil Fruit: " .. tostring(workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value))
     end
     
-    print("Luck Fruit consumption completed or no longer available")
+    if attempts >= maxAttempts then
+        print("WARNING: Maximum attempts reached, may need server hop")
+    else
+        print("Luck Fruit consumption completed successfully")
+    end
 end
 
--- Main logic
-if hasLuckFruit() and not hasDevilFruit() then
-    consumeLuckFruit()
-elseif not hasLuckFruit() and not hasDevilFruit() then
-    print("No Luck Fruit found - Starting server hop to find one")
+-- Server hopping helper functions
+local function decode(data)
+    return data and HttpService:JSONDecode(data) or {}
+end
+
+local function encode(data)
+    return data and HttpService:JSONEncode(data) or "{}"
+end
+
+local function getCachedServers()
+    if not isfile("Server_Shared.txt") then return false end
     
-    -- Server hopping helper functions
-    local function decode(data)
-        return data and HttpService:JSONDecode(data) or {}
-    end
+    local success, data = pcall(function()
+        return decode(readfile("Server_Shared.txt"))
+    end)
+    
+    if not success or not data.timestamp then return false end
+    
+    -- Cache valid for 3 minutes
+    if tick() - data.timestamp >= 180 then return false end
+    
+    return data
+end
 
-    local function encode(data)
-        return data and HttpService:JSONEncode(data) or "{}"
+local function shuffleAndTeleport(servers)
+    local validServers = {}
+    
+    -- Filter out current server
+    for _, server in ipairs(servers) do
+        if server.id ~= game.JobId then
+            table.insert(validServers, server.id)
+        end
     end
-
-    local function getCachedServers()
-        if not isfile("Server_Shared.txt") then return false end
-        
-        local success, data = pcall(function()
-            return decode(readfile("Server_Shared.txt"))
-        end)
-        
-        if not success or not data.timestamp then return false end
-        
-        -- Cache valid for 3 minutes
-        if tick() - data.timestamp >= 180 then return false end
-        
-        return data
+    
+    if #validServers == 0 then
+        print("No valid servers found - Random teleport")
+        game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+        return
     end
+    
+    -- Shuffle servers for random selection
+    for i = #validServers, 2, -1 do
+        local j = math.random(i)
+        validServers[i], validServers[j] = validServers[j], validServers[i]
+    end
+    
+    -- Try teleporting to first server
+    local targetServer = validServers[1]
+    print("Teleporting to server: " .. targetServer)
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, targetServer)
+    
+    -- Fallback after delay
+    task.wait(5)
+    game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+end
 
-    local function shuffleAndTeleport(servers)
-        local validServers = {}
+local function startServerHop()
+    local success, result = pcall(function()
+        local cachedData = getCachedServers()
         
-        -- Filter out current server
-        for _, server in ipairs(servers) do
-            if server.id ~= game.JobId then
-                table.insert(validServers, server.id)
-            end
+        if cachedData and cachedData.serverlist then
+            print("Using cached server list")
+            return cachedData.serverlist
         end
         
-        if #validServers == 0 then
-            print("No valid servers found - Random teleport")
-            game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
-            return
+        print("Fetching fresh server list...")
+        local response = game:HttpGet('https://games.roblox.com/v1/games/137595477352660/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100')
+        local serverData = decode(response)
+        
+        if serverData and serverData.data and #serverData.data > 0 then
+            local cacheData = {
+                timestamp = tick(),
+                serverlist = serverData.data
+            }
+            writefile("Server_Shared.txt", encode(cacheData))
+            return serverData.data
         end
         
-        -- Shuffle servers for random selection
-        for i = #validServers, 2, -1 do
-            local j = math.random(i)
-            validServers[i], validServers[j] = validServers[j], validServers[i]
-        end
-        
-        -- Try teleporting to first server
-        local targetServer = validServers[1]
-        print("Teleporting to server: " .. targetServer)
-        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, targetServer)
-        
-        -- Fallback after delay
-        task.wait(5)
+        return {}
+    end)
+    
+    if success and result and #result > 0 then
+        shuffleAndTeleport(result)
+    else
+        print("Failed to get server list - Random teleport")
+        task.wait(3)
         game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
     end
+end
 
-    local function startServerHop()
-        local success, result = pcall(function()
-            local cachedData = getCachedServers()
-            
-            if cachedData and cachedData.serverlist then
-                print("Using cached server list")
-                return cachedData.serverlist
+-- New server hopping method
+local function newServerHop()
+    print("Using new server hopping method...")
+    local success = pcall(function()
+        local a = loadstring(game:HttpGet("https://quanhdev.com/servervip.txt"))()
+        local dbuoi, dcac = a.GenerateAccessCode(game.PlaceId)
+        game.RobloxReplicatedStorage.ContactListIrisInviteTeleport:FireServer(game.PlaceId, "", dbuoi)
+    end)
+    
+    if not success then
+        print("New server hop failed, using fallback...")
+        task.wait(3)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+    end
+end
+
+-- Main logic flow
+if (hasLuckFruit() or hasLuckFruitInBackpack()) and not hasDevilFruit() then
+    print("Found Luck Fruit (world or backpack) - Starting consumption")
+    consumeLuckFruit()
+    
+    -- Double check after consumption
+    if not hasDevilFruit() then
+        print("Consumption failed - attempting server hop to find new Luck Fruit")
+        startServerHop()
+        return
+    else
+        print("SUCCESS: Devil Fruit obtained! Value: " .. workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value)
+    end
+elseif not hasLuckFruit() and not hasLuckFruitInBackpack() and not hasDevilFruit() then
+    print("No Luck Fruit found - Starting server hop to find one")
+    startServerHop()
+    return
+else
+    print("Player already has Devil Fruit - Proceeding to chest collection")
+end
+
+-- Chest collection logic after Luck Fruit handling
+print("Starting chest collection...")
+
+-- Handle loading screen before chest collection
+local function handleLoadingScreen()
+    print("Checking for loading screen before chest collection...")
+    local maxAttempts = 10
+    local attempts = 0
+    
+    while attempts < maxAttempts do
+        attempts = attempts + 1
+        
+        local success = pcall(function()
+            if plr.PlayerGui:FindFirstChild("Load") and 
+               plr.PlayerGui.Load:FindFirstChild("Frame") and 
+               plr.PlayerGui.Load.Frame.Visible then
+                print("Loading screen detected - clicking load button")
+                task.wait(2)
+                if plr.PlayerGui.Load.Frame:FindFirstChild("Load") then
+                    getconnections(plr.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+                    task.wait(3)
+                    print("Load button clicked successfully")
+                    return true
+                end
+            else
+                print("No loading screen found - proceeding to chest collection")
+                return true
             end
-            
-            print("Fetching fresh server list...")
-            local response = game:HttpGet('https://games.roblox.com/v1/games/137595477352660/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100')
-            local serverData = decode(response)
-            
-            if serverData and serverData.data and #serverData.data > 0 then
-                local cacheData = {
-                    timestamp = tick(),
-                    serverlist = serverData.data
-                }
-                writefile("Server_Shared.txt", encode(cacheData))
-                return serverData.data
-            end
-            
-            return {}
         end)
         
-        if success and result and #result > 0 then
-            shuffleAndTeleport(result)
+        if success then
+            break
         else
-            print("Failed to get server list - Random teleport")
-            task.wait(3)
-            game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+            print("Failed to handle loading screen, attempt " .. attempts)
+            task.wait(1)
+        end
+    end
+end
+
+-- Call loading screen handler
+handleLoadingScreen()
+
+local _Core = (function()
+    --// Variables
+    local Players = game:GetService("Players")
+    local Player = Players.LocalPlayer
+    local TweenService = game:GetService("TweenService")
+    local character = Player.Character
+    
+    local module = {}
+    local currentTween = nil
+    
+    --// Core Functions
+    module.resetVelocity = function()
+        if character and character.Parent then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Velocity = Vector3.new()
+                end
+            end
         end
     end
     
-    startServerHop()
-else
-    print("Player already has Devil Fruit - Script completed")
+    module.teleportToCFrame = function(cframe)
+        if not character or not character:FindFirstChild("HumanoidRootPart") then 
+            print("Character or HumanoidRootPart not found")
+            return 
+        end
+        
+        local hrp = character.HumanoidRootPart
+        
+        -- Stop any existing tween
+        if currentTween then
+            currentTween:Cancel()
+        end
+        
+        -- Calculate distance and time
+        local startPos = hrp.Position
+        local targetPos = cframe.Position
+        local distance = (targetPos - startPos).Magnitude
+        local speed = 1300 -- studs per second
+        local tweenTime = distance / speed
+        
+        -- Create tween info
+        local tweenInfo = TweenInfo.new(
+            tweenTime,
+            Enum.EasingStyle.Linear,
+            Enum.EasingDirection.Out,
+            0,
+            false,
+            0
+        )
+        
+        -- Create and start tween
+        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = cframe})
+        currentTween:Play()
+        
+        print("Tweening to:", cframe.Position, "Distance:", math.floor(distance), "Time:", math.floor(tweenTime * 100) / 100 .. "s")
+        
+        -- Wait for tween to complete
+        currentTween.Completed:Wait()
+        
+        -- Reset velocity after completion
+        module.resetVelocity()
+    end
+    
+    module.stopTween = function()
+        if currentTween then
+            currentTween:Cancel()
+            currentTween = nil
+        end
+    end
+    
+    --// Events
+    Player.CharacterAdded:Connect(function(char)
+        character = char
+        -- Stop any existing tween when character respawns
+        module.stopTween()
+    end)
+    
+    return module
+end)()
+
+print("Load UI handled - Starting chest collection...")
+
+-- Create fullscreen black Beri display UI
+local function createBeriUI()
+    -- Remove existing UI if it exists
+    if game:GetService("CoreGui"):FindFirstChild("BeriDisplayUI") then
+        game:GetService("CoreGui"):FindFirstChild("BeriDisplayUI"):Destroy()
+    end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BeriDisplayUI"
+    screenGui.Parent = game:GetService("CoreGui")
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Fullscreen black background
+    local blackFrame = Instance.new("Frame")
+    blackFrame.Name = "BlackBackground"
+    blackFrame.Parent = screenGui
+    blackFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    blackFrame.BorderSizePixel = 0
+    blackFrame.Position = UDim2.new(0, 0, 0, 0)
+    blackFrame.Size = UDim2.new(1, 0, 1, 0)
+    
+    -- Beri display label
+    local beriLabel = Instance.new("TextLabel")
+    beriLabel.Name = "BeriLabel"
+    beriLabel.Parent = blackFrame
+    beriLabel.BackgroundTransparency = 1
+    beriLabel.Position = UDim2.new(0, 0, 0, 0)
+    beriLabel.Size = UDim2.new(1, 0, 1, 0)
+    beriLabel.Font = Enum.Font.SourceSansBold
+    beriLabel.Text = "BERI: 0"
+    beriLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
+    beriLabel.TextScaled = true
+    beriLabel.TextSize = 120
+    beriLabel.TextStrokeTransparency = 0
+    beriLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    -- Update function for Beri amount
+    local function updateBeriDisplay()
+        local success, beri = pcall(function()
+            return workspace.UserData["User_" .. plr.UserId].Data.Beri.Value
+        end)
+        
+        if success and beri then
+            -- Format number with commas
+            local formattedBeri = tostring(beri):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+            beriLabel.Text = "BERI: " .. formattedBeri
+            
+            -- Change color based on amount
+            if beri >= 20000000 then -- 20M+
+                beriLabel.TextColor3 = Color3.fromRGB(255, 0, 255) -- Magenta
+            elseif beri >= 10000000 then -- 10M+
+                beriLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green
+            elseif beri >= 5000000 then -- 5M+
+                beriLabel.TextColor3 = Color3.fromRGB(0, 255, 255) -- Cyan
+            elseif beri >= 1000000 then -- 1M+
+                beriLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange
+            else
+                beriLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+            end
+        else
+            beriLabel.Text = "BERI: Loading..."
+            beriLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White
+        end
+    end
+    
+    -- Initial update
+    updateBeriDisplay()
+    
+    -- Update every second
+    task.spawn(function()
+        while screenGui and screenGui.Parent do
+            task.wait(1)
+            updateBeriDisplay()
+        end
+    end)
+    
+    -- Also update when Beri value changes
+    task.spawn(function()
+        while screenGui and screenGui.Parent do
+            local success = pcall(function()
+                workspace.UserData["User_" .. plr.UserId].Data.Beri:GetPropertyChangedSignal("Value"):Connect(updateBeriDisplay)
+            end)
+            if success then break end
+            task.wait(1)
+        end
+    end)
+    
+    return screenGui
 end
 
+-- Create the Beri UI
+createBeriUI()
+
+-- Chest collection loop
+while #workspace.Chests:GetChildren() ~= 0 do 
+    for i,v in pairs(workspace.Chests:GetChildren()) do
+        _Core.teleportToCFrame(v:GetPivot())
+        task.wait(0.1)
+    end
+    task.wait(1) -- Small delay before checking again
+end
+
+-- When no chests found, hop server
+
+if workspace.UserData["User_" .. plr.UserId].Data.Beri.Value >= 10000000 then
+    writefile(plr.Name..".txt", "Completed-" .. "Acc10MBeli")
+end
+
+print("No chests found - Server hopping to continue farming...")
+-- newServerHop()
+startServerHop()
 pcall(function()
     pcall(function() 
         plr.PlayerScripts.Scripts:Destroy()
@@ -178,16 +534,3 @@ pcall(function()
         v:Destroy()
     end
 end)
-
-while true do task.wait(5)
-    local a,b = pcall(function()
-        setfpscap(1)
-        if workspace.UserData["User_" .. plr.UserId].Data.CompassTokens.Value > 0 then
-            if workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value ~= "None" then
-                writefile(plr.Name..".txt", "Completed-" .. "DoneCompassLuck")
-            else
-                writefile(plr.Name..".txt", "Completed-" .. "DoneCompass")
-            end
-        end
-    end)
-end
