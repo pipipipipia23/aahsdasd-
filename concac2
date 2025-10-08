@@ -558,9 +558,9 @@ pcall(function()
         plr.PlayerScripts.Scripts:Destroy()
     end)
     
-    for k,v in plr.PlayerGui:GetChildren() do
-        v:Destroy()
-    end
+    -- for k,v in plr.PlayerGui:GetChildren() do
+    --     v:Destroy()
+    -- end
 end)
 
 function isSpawn()
