@@ -1,335 +1,713 @@
--- Thay đổi URL webhook của bạn ở đây
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1421258453099216991/8BvwZ-uawO9HfDJHFX82_iMxmiSFq3uMaDLyIPO4Edo7ROgVRGso5kTPQPzMKGRID4y9"
 
-local targetPlayer = "zxczxcdswrwerewrwerwerr"
+local HttpService = game:GetService("HttpService")
+local virtualUser = game:GetService("VirtualUser")
+
+local plr = game.Players.LocalPlayer
 
 repeat task.wait(0.5) until game:IsLoaded()
 
--- Services cache
-local Services = setmetatable({}, {
-    __index = function(_, Name)
-        return cloneref(game:GetService(Name))
-    end,
-})
+plr.Idled:Connect(function()
+    virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(0.25)
+    virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
 
-local coreGui = Services.CoreGui
-local workspace = Services.Workspace
-local playerService = Services.Players
-local replicatedStorage = Services.ReplicatedStorage
-local runService = Services.RunService
-local virtualUser = Services.VirtualUser
-local VirtualInputManager = Services.VirtualInputManager
-local HttpService = Services.HttpService
-local plr = playerService.LocalPlayer
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    UserSettings().GameSettings.MasterVolume = 0
+    UserSettings().GameSettings.SavedQualitySetting = Enum.SavedQualitySetting.QualityLevel1
+end)
 
--- Function để gửi webhook
-local function sendWebhook(message, mentionEveryone)
-    local data = {
-        content = mentionEveryone and "@everyone " .. message or message,
-        username = "Box Notifier"
-    }
-    
-    local success, response = pcall(function()
-        return request({
-            Url = WEBHOOK_URL,
-            Headers = {
-                ["content-type"] = "application/json"
-            },
-            Method = "POST",
-            Body = HttpService:JSONEncode(data),
-        })
-    end)
-    
-    if not success then
-        warn("Failed to send webhook: " .. tostring(response))
-    end
+print("Starting One Piece Mythical Script...")
+
+repeat task.wait(.5) until workspace:FindFirstChild("UserData")
+repeat task.wait(.5) until plr:FindFirstChild("PlayerGui")
+repeat task.wait(.5) until workspace:FindFirstChild("Chests")
+repeat task.wait(.5) until plr:FindFirstChild("Backpack")
+repeat task.wait(.5) until workspace.UserData:FindFirstChild("User_" .. plr.UserId)
+repeat task.wait(.5) until workspace.UserData:FindFirstChild("User_" .. plr.UserId):FindFirstChild("Data")
+
+local function hasDevilFruit()
+    return workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value ~= "None"
 end
 
--- Webhook flags để tránh spam (dùng instance thay vì name)
-local webhookFlags = {}
-local currentNotifications = {}
-local currentBoxes = {} -- Track all boxes with priority
-local trackedInstances = {} -- Track actual item instances
-
--- Fullscreen notification system
-local screenGui = nil
-local notificationFrame = nil
-
-local function createNotificationScreen()
-    if screenGui then return end
-    
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "BoxNotificationGui"
-    screenGui.Parent = coreGui
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    
-    notificationFrame = Instance.new("Frame")
-    notificationFrame.Name = "NotificationFrame"
-    notificationFrame.Parent = screenGui
-    notificationFrame.Size = UDim2.new(1, 0, 1, 0)
-    notificationFrame.Position = UDim2.new(0, 0, 0, 0)
-    notificationFrame.BackgroundTransparency = 0.3
-    notificationFrame.BorderSizePixel = 0
-    notificationFrame.Visible = false
-    
-    -- Text label for notification
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "NotificationText"
-    textLabel.Parent = notificationFrame
-    textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
-    textLabel.Position = UDim2.new(0.1, 0, 0.35, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = ""
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    
-    -- Click to dismiss
-    local clickButton = Instance.new("TextButton")
-    clickButton.Name = "ClickToDismiss"
-    clickButton.Parent = notificationFrame
-    clickButton.Size = UDim2.new(1, 0, 1, 0)
-    clickButton.Position = UDim2.new(0, 0, 0, 0)
-    clickButton.BackgroundTransparency = 1
-    clickButton.Text = ""
-    
-    clickButton.MouseButton1Click:Connect(function()
-        notificationFrame.Visible = false
-    end)
+local function hasLuckFruit()
+    return workspace:FindFirstChild("Luck Fruit")
 end
 
-local function getBoxPriority(itemName)
-    if string.find(itemName, "Ultra Rare") then
-        return 3 -- Highest priority
-    elseif string.find(itemName, "Rare") then
-        return 2 -- Medium priority
-    else
-        return 1 -- Lowest priority (Common)
-    end
+local function hasLuckFruitInBackpack()
+    return plr.Backpack:FindFirstChild("Luck Fruit") ~= nil
 end
 
-local function updateNotificationDisplay()
-    if not next(currentBoxes) then
-        if notificationFrame then
-            notificationFrame.Visible = false
+local function consumeLuckFruit()
+    print("Found Luck Fruit - Starting consumption process")
+    
+    local maxAttempts = 50 -- Tối đa 50 lần thử (khoảng 5 phút)
+    local attempts = 0
+    
+    while (hasLuckFruit() or hasLuckFruitInBackpack()) and not hasDevilFruit() and attempts < maxAttempts do
+        attempts = attempts + 1
+        task.wait(3)
+        
+        local success = pcall(function()
+            if plr.PlayerGui.Load.Frame.Visible then
+                print("Loading screen detected - clicking load button")
+                task.wait(2)
+                getconnections(plr.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+                task.wait(3)
+                return
+            end
+            
+            local fruitTool = plr.Backpack:FindFirstChild("Luck Fruit")
+            if fruitTool then
+                print("Found Luck Fruit in backpack - equipping")
+                plr.Character.Humanoid:EquipTool(fruitTool)
+                task.wait(2) -- Wait longer for equip
+                return -- Let next loop handle consumption
+            end
+            
+            local equippedFruit = plr.Character:FindFirstChild("Luck Fruit")
+            if equippedFruit then
+                print("Fruit equipped - attempting to consume")
+                local oldDevilFruit = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                
+                game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+                task.wait(2)
+                
+                if plr.PlayerGui:FindFirstChild("GiverGUI") and plr.PlayerGui.GiverGUI.ImageLabel.Frame:FindFirstChild("1") then
+                    print("Consumption GUI found - clicking accept")
+                    getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
+                    task.wait(3)
+                    
+                    local newDevilFruit = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                    if newDevilFruit ~= oldDevilFruit and newDevilFruit ~= "None" then
+                        print("SUCCESS: Devil Fruit consumed! Got: " .. newDevilFruit)
+                        return true
+                    end
+                end
+            else
+                local luckFruit = workspace:FindFirstChild("Luck Fruit")
+                if luckFruit and luckFruit:FindFirstChild("Main1") then
+                    print("Teleporting to collect fruit from world")
+                    plr.Character.HumanoidRootPart.CFrame = luckFruit.Main1.CFrame
+                    task.wait(1)
+                    fireclickdetector(luckFruit.Main1.ClickDetector)
+                    task.wait(3) -- Wait for collection
+                    
+                    local collectedFruit = plr.Backpack:FindFirstChild("Luck Fruit")
+                    if collectedFruit then
+                        print("Fruit collected successfully - equipping immediately")
+                        plr.Character.Humanoid:EquipTool(collectedFruit)
+                        task.wait(2)
+                        
+                        local equipped = plr.Character:FindFirstChild("Luck Fruit")
+                        if equipped then
+                            print("Fruit equipped after collection - consuming immediately")
+                            local oldDF = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                            
+                            game:GetService("VirtualUser"):ClickButton1(Vector2.new(99999, 99999))
+                            task.wait(2)
+                            
+                            if plr.PlayerGui:FindFirstChild("GiverGUI") and plr.PlayerGui.GiverGUI.ImageLabel.Frame:FindFirstChild("1") then
+                                print("Consumption GUI appeared - clicking accept")
+                                getconnections(plr.PlayerGui.GiverGUI.ImageLabel.Frame["1"].MouseButton1Click)[1].Function()
+                                task.wait(3)
+                                
+                                local newDF = workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value
+                                if newDF ~= oldDF and newDF ~= "None" then
+                                    print("SUCCESS: Consumed fruit after collection! Got: " .. newDF)
+                                    return true
+                                end
+                            end
+                        end
+                    else
+                        print("Failed to collect fruit - will retry")
+                    end
+                else
+                    print("No Luck Fruit found anywhere - will retry")
+                end
+            end
+        end)
+        
+        if not success then
+            print("Error in consumption attempt " .. attempts)
         end
+        
+        if hasDevilFruit() then
+            print("Devil Fruit acquired! Consumption successful!")
+            break
+        end
+        
+        print("Attempt " .. attempts .. "/" .. maxAttempts .. " - Devil Fruit: " .. tostring(workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value))
+    end
+    
+    if attempts >= maxAttempts then
+        print("WARNING: Maximum attempts reached, may need server hop")
+    else
+        print("Luck Fruit consumption completed successfully")
+    end
+end
+
+local function decode(data)
+    return data and HttpService:JSONDecode(data) or {}
+end
+
+local function encode(data)
+    return data and HttpService:JSONEncode(data) or "{}"
+end
+
+local function getCachedServers()
+    if not isfile("Server_Shared.txt") then return false end
+    
+    local success, data = pcall(function()
+        return decode(readfile("Server_Shared.txt"))
+    end)
+    
+    if not success or not data.timestamp then return false end
+    
+    if tick() - data.timestamp >= 180 then return false end
+    
+    return data
+end
+
+local function shuffleAndTeleport(servers)
+    local validServers = {}
+    
+    for _, server in ipairs(servers) do
+        if server.id ~= game.JobId then
+            table.insert(validServers, server.id)
+        end
+    end
+    
+    if #validServers == 0 then
+        print("No valid servers found - Random teleport")
+        game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
         return
     end
     
-    -- Find highest priority box to display
-    local highestPriority = 0
-    local displayBox = nil
-    local boxCount = {ultraRare = 0, rare = 0, common = 0}
-    
-    for boxName, _ in pairs(currentBoxes) do
-        local priority = getBoxPriority(boxName)
-        if priority > highestPriority then
-            highestPriority = priority
-            displayBox = boxName
-        end
-        
-        -- Count boxes by type
-        if priority == 3 then
-            boxCount.ultraRare = boxCount.ultraRare + 1
-        elseif priority == 2 then
-            boxCount.rare = boxCount.rare + 1
-        else
-            boxCount.common = boxCount.common + 1
-        end
+    for i = #validServers, 2, -1 do
+        local j = math.random(i)
+        validServers[i], validServers[j] = validServers[j], validServers[i]
     end
     
-    if displayBox then
-        createNotificationScreen()
+    local targetServer = validServers[1]
+    print("Teleporting to server: " .. targetServer)
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, targetServer)
+    
+    task.wait(5)
+    game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+end
+
+local function startServerHop()
+    local success, result = pcall(function()
+        local cachedData = getCachedServers()
         
-        -- Create summary text
-        local summaryText = ""
-        if boxCount.ultraRare > 0 then
-            summaryText = summaryText .. "🔥 Ultra Rare: " .. boxCount.ultraRare .. " "
-        end
-        if boxCount.rare > 0 then
-            summaryText = summaryText .. "✨ Rare: " .. boxCount.rare .. " "
-        end
-        if boxCount.common > 0 then
-            summaryText = summaryText .. "📦 Common: " .. boxCount.common .. " "
-        end
-        
-        if highestPriority == 3 then -- Ultra Rare
-            notificationFrame.BackgroundColor3 = Color3.new(1, 0, 0) -- Red
-            notificationFrame.NotificationText.Text = "🔥 ULTRA RARE BOX! 🔥\n" .. displayBox .. "\n\n" .. summaryText
-        elseif highestPriority == 2 then -- Rare
-            notificationFrame.BackgroundColor3 = Color3.new(0, 1, 0) -- Green
-            notificationFrame.NotificationText.Text = "✨ RARE BOX! ✨\n" .. displayBox .. "\n\n" .. summaryText
-        else -- Common
-            notificationFrame.BackgroundColor3 = Color3.new(1, 1, 1) -- White
-            notificationFrame.NotificationText.Text = "📦 COMMON BOX 📦\n" .. displayBox .. "\n\n" .. summaryText
+        if cachedData and cachedData.serverlist then
+            print("Using cached server list")
+            return cachedData.serverlist
         end
         
-        -- Only show if window is not focused
-        if not game:GetService("UserInputService").WindowFocused then
-            notificationFrame.Visible = true
+        print("Fetching fresh server list...")
+        local response = game:HttpGet('https://games.roblox.com/v1/games/137595477352660/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100')
+        local serverData = decode(response)
+        
+        if serverData and serverData.data and #serverData.data > 0 then
+            local cacheData = {
+                timestamp = tick(),
+                serverlist = serverData.data
+            }
+            writefile("Server_Shared.txt", encode(cacheData))
+            return serverData.data
+        end
+        
+        return {}
+    end)
+    
+    if success and result and #result > 0 then
+        shuffleAndTeleport(result)
+    else
+        print("Failed to get server list - Random teleport")
+        task.wait(3)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+    end
+end
+
+local function newServerHop()
+    print("Using new server hopping method...")
+    local success = pcall(function()
+        local a = loadstring(game:HttpGet("https://quanhdev.com/servervip.txt"))()
+        local dbuoi, dcac = a.GenerateAccessCode(game.PlaceId)
+        game.RobloxReplicatedStorage.ContactListIrisInviteTeleport:FireServer(game.PlaceId, "", dbuoi)
+        writefile("AccessId_".. plr.UserId ..".txt", dbuoi)
+    end)
+    
+    if not success then
+        print("New server hop failed, using fallback...")
+        task.wait(3)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+    end
+end
+
+if (hasLuckFruit() or hasLuckFruitInBackpack()) and not hasDevilFruit() then
+    print("Found Luck Fruit (world or backpack) - Starting consumption")
+    consumeLuckFruit()
+    
+    if not hasDevilFruit() then
+        print("Consumption failed - attempting server hop to find new Luck Fruit")
+        startServerHop()
+        return
+    else
+        print("SUCCESS: Devil Fruit obtained! Value: " .. workspace.UserData["User_" .. plr.UserId].Data.DevilFruit.Value)
+    end
+elseif not hasLuckFruit() and not hasLuckFruitInBackpack() and not hasDevilFruit() then
+    print("No Luck Fruit found - Starting server hop to find one")
+    startServerHop()
+    return
+else
+    print("Player already has Devil Fruit - Proceeding to chest collection")
+end
+
+print("Starting chest collection...")
+
+local function handleLoadingScreen()
+    print("Checking for loading screen before chest collection...")
+    local maxAttempts = 10
+    local attempts = 0
+    
+    while attempts < maxAttempts do
+        attempts = attempts + 1
+        
+        local success = pcall(function()
+            if plr.PlayerGui:FindFirstChild("Load") and 
+               plr.PlayerGui.Load:FindFirstChild("Frame") and 
+               plr.PlayerGui.Load.Frame.Visible then
+                print("Loading screen detected - clicking load button")
+                task.wait(2)
+                if plr.PlayerGui.Load.Frame:FindFirstChild("Load") then
+                    getconnections(plr.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
+                    task.wait(3)
+                    print("Load button clicked successfully")
+                    return true
+                end
+            else
+                print("No loading screen found - proceeding to chest collection")
+                return true
+            end
+        end)
+        
+        if success then
+            break
+        else
+            print("Failed to handle loading screen, attempt " .. attempts)
+            task.wait(1)
         end
     end
 end
 
-game:GetService("UserInputService").WindowFocused:Connect(function()
-    -- Hide when focused
-    if notificationFrame then
-        notificationFrame.Visible = false
-    end
-end)
+handleLoadingScreen()
 
-game:GetService("UserInputService").WindowFocusReleased:Connect(function()
-    -- Update display when window loses focus
-    updateNotificationDisplay()
-end)
+local _Core = (function()
+    local Players = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
+    local Player = Players.LocalPlayer
+    local character = Player.Character
 
--- Continuous inventory scanning
-local function scanInventory()
-    local inventory = plr.Backpack:GetChildren()
-    local newCurrentBoxes = {}
-    local currentInstances = {}
-    
-    -- Scan current inventory
-    for _, item in pairs(inventory) do
-        if string.find(item.Name, "Box") then
-            newCurrentBoxes[item.Name] = true
-            currentInstances[item] = true
-            
-            -- Check if this specific instance hasn't been notified yet
-            if not webhookFlags[item] then
-                webhookFlags[item] = true
-                
-                local itemName = item.Name
-                local isUltraRare = string.find(itemName, "Ultra Rare")
-                local isRare = string.find(itemName, "Rare") and not isUltraRare
-                
-                if isUltraRare then
-                    sendWebhook("🔥 **ULTRA RARE!** " .. itemName .. " đã được tìm thấy! - " .. plr.Name, true)
-                elseif isRare then
-                    sendWebhook("✨ **RARE!** " .. itemName .. " đã được tìm thấy! - " .. plr.Name, true)
-                else
-                    sendWebhook("📦 **" .. itemName .. "** đã được tìm thấy!", false)
+    local module = {}
+
+    module.resetVelocity = function()
+        if character and character.Parent then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Velocity = Vector3.new()
                 end
             end
         end
     end
-    
-    -- Update current boxes
-    currentBoxes = newCurrentBoxes
-    
-    -- Clean up flags for instances that no longer exist
-    for instance, _ in pairs(webhookFlags) do
-        if not currentInstances[instance] then
-            webhookFlags[instance] = nil
-            print("Reset flag for instance: " .. tostring(instance))
+
+    module.teleportToCFrame = function(cframe)
+        if not character or not character:FindFirstChild("HumanoidRootPart") then
+            print("Character or HumanoidRootPart not found")
+            return false
         end
-    end
-    
-    -- Update notification display based on current boxes
-    updateNotificationDisplay()
-end
 
--- Start continuous scanning
-task.spawn(function()
-    while true do
-        pcall(scanInventory)
-        task.wait(1) -- Scan every 1 second
-    end
-end)
+        local humanoid = character:FindFirstChild("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then
+            print("Character is dead, skipping teleport")
+            return false
+        end
 
-plr.Idled:Connect(function()
-    virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-    task.wait(0.25)
-    virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-end)
+        local hrp = character.HumanoidRootPart
+        local distance = (hrp.Position - cframe.Position).Magnitude
 
+        local speed = 300
+        local tweenTime = math.max(distance / speed, 0.1)
 
-if plr.Name == targetPlayer then
-    print("Warning: The target player is different from the local player.")
-    return
-end
-
-plr.Idled:Connect(function()
-    virtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-    task.wait(0.25)
-    virtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-end)
-
-function tpdeobisao(a,bl)
-    if bl == nil then
-        bl = false 
-    end
-    local plr = game.Players.LocalPlayer
-    local creat32etween
-    local CULO312RD
-    local calltween = {}
-    local cac
-    if a == nil then
-        cac = CFrame.new(0, 0, 0)
-    else
-        cac = a
-    end
-    local pos = (cac.Position - plr.Character.HumanoidRootPart.Position).Magnitude
-    local TweenService = game:GetService("TweenService")
-    if plr.Character.Humanoid.Health > 0 then
-        CULO312RD = TweenInfo.new(
-            pos / 450,
-            Enum.EasingStyle.Linear
+        local tweenInfo = TweenInfo.new(
+            tweenTime,
+            Enum.EasingStyle.Linear,
+            Enum.EasingDirection.InOut,
+            0,
+            false,
+            0
         )
-        creat32etween = TweenService:Create(plr.Character.HumanoidRootPart, CULO312RD, { CFrame = cac })
-        creat32etween:Play()
-        if bl then
-            creat32etween.Completed:Wait()
+
+        local tween = TweenService:Create(hrp, tweenInfo, {CFrame = cframe})
+
+        module.resetVelocity()
+        tween:Play()
+
+        local completed = false
+        local startTime = tick()
+        local maxWaitTime = tweenTime + 2 -- Add 2 second buffer
+
+        tween.Completed:Connect(function()
+            completed = true
+        end)
+
+        while not completed do
+            task.wait(0.1)
+
+            if not isSpawn() then
+                plr.Character.Humanoid.Health = 0
+                completed = true
+            end
+
+            if not character or not character.Parent or not humanoid or humanoid.Health <= 0 then
+                print("Character died during teleport, canceling tween")
+                tween:Cancel()
+                return false
+            end
+
+            if tick() - startTime > maxWaitTime then
+                print("Tween timeout reached, forcing completion")
+                tween:Cancel()
+                hrp.CFrame = cframe -- Force teleport to destination
+                return true
+            end
         end
-    else
-        creat32etween = nil
+
+        print("Tweened to:", cframe, "| Distance:", math.floor(distance), "| Time:", math.floor(tweenTime * 100) / 100)
+        return true
     end
-    function calltween:Stop()
-        if creat32etween then
-            creat32etween:Cancel()
-        end
-    end
-    return calltween
+
+    Player.CharacterAdded:Connect(function(char)
+        character = char
+    end)
+
+    return module
+end)()
+
+print("Load UI handled - Starting chest collection...")
+
+local function findRemote()
+    local m = workspace:FindFirstChild("Merchants")
+    local b = m and m:FindFirstChild("BetterDrinkMerchant")
+    local c = b and b:FindFirstChild("Clickable")
+    local s = c and c:FindFirstChild("ShopDrinksPlus")
+    local clk = s and s:FindFirstChild("Clicked")
+    return clk and clk:FindFirstChild("Retum")
 end
 
-while true do wait(5)
+local function autoDrinkConsume()
+    local Drinks = {"Cider", "Lemonade", "Juice", "Smoothie", "Milk", "Golden Apple"}
+    local drinksConsumed = 0
+    
+    for _, v1 in pairs(plr.Backpack:GetChildren()) do
+        for _, v2 in pairs(Drinks) do
+            if string.match(v1.Name, v2) then
+                local success = pcall(function()
+                    plr.Character.Humanoid:UnequipTools()
+                    task.wait(0.1)
+                    v1.Parent = plr.Character
+                    task.wait(0.1)
+                    v1:Activate()
+                    drinksConsumed = drinksConsumed + 1
+                    print("Consumed drink:", v1.Name)
+                end)
+                
+                if not success then
+                    print("Failed to consume drink:", v1.Name)
+                end
+                
+                task.wait(0.5)
+            end
+        end
+    end
+    
+    if drinksConsumed > 0 then
+        print("Total drinks consumed:", drinksConsumed)
+    else
+        print("No drinks found in backpack to consume")
+    end
+end
+
+local function checkAndBuyDrinks()
+    local success = pcall(function()
+        local userData = workspace.UserData["User_" .. plr.UserId].Data
+        local currentBeri = userData.Beri.Value
+        
+        print("=== AUTO DRINK SYSTEM ===")
+        print("Current Beri:", currentBeri)
+        
+        local defenseLvl = userData.DefenseLvl.Value
+        local meleeLvl = userData.MeleeLvl.Value
+        local sniperLvl = userData.SniperLvl.Value
+        local totalStats = defenseLvl + meleeLvl + sniperLvl
+        
+        print("Stats - Defense:", defenseLvl, "| Melee:", meleeLvl, "| Sniper:", sniperLvl, "| Total:", totalStats)
+        
+        if totalStats >= 100 then
+            print("🚫 STATS LIMIT REACHED: Total stats (" .. totalStats .. ") >= 200, skipping drink purchases")
+            print("=========================")
+            return
+        end
+        
+        if currentBeri >= 100000 then
+            local remote = findRemote()
+            if not remote then 
+                print("❌ Drink merchant remote not found")
+                return 
+            end
+            
+            print("✅ Drink merchant found")
+            print("✅ Stats check passed - Total stats (" .. totalStats .. ") < 200, proceeding with purchases")
+            
+            local allDrinks = {"Smoothie+", "Cider+", "Lemonade+", "Juice+"}
+            local priorityDrinks = {}
+            
+            if defenseLvl == 1 then
+                table.insert(priorityDrinks, "Smoothie+")
+                print("Priority: Smoothie+ (Defense level 1)")
+            end
+            if meleeLvl == 1 then
+                table.insert(priorityDrinks, "Cider+")
+                print("Priority: Cider+ (Melee level 1)")
+            end
+            if sniperLvl == 1 then
+                table.insert(priorityDrinks, "Lemonade+")
+                print("Priority: Lemonade+ (Sniper level 1)")
+            end
+            
+            local targetSpend = 500000
+            local drinksToBuyCount = math.random(10, 20) -- Random between 10-20 drinks
+            local actualPurchases = 0
+            
+            print("🎯 Target spending: " .. targetSpend .. " | Planning to buy: " .. drinksToBuyCount .. " drinks")
+            
+            for i = 1, drinksToBuyCount do
+                local selectedDrink
+                
+                if #priorityDrinks > 0 and math.random(1, 100) <= 70 then
+                    selectedDrink = priorityDrinks[math.random(1, #priorityDrinks)]
+                else
+                    selectedDrink = allDrinks[math.random(1, #allDrinks)]
+                end
+                
+                print("🍹 Buying drink " .. i .. "/" .. drinksToBuyCount .. ": " .. selectedDrink)
+                
+                local buySuccess = pcall(function()
+                    remote:FireServer(selectedDrink)
+                end)
+                
+                if buySuccess then
+                    actualPurchases = actualPurchases + 1
+                    print("✅ Purchase " .. i .. " successful")
+                else
+                    print("❌ Purchase " .. i .. " failed")
+                end
+                
+                task.wait(math.random(1, 3) / 10) -- Random 0.1-0.3 seconds between purchases
+                
+                local newBeri = workspace.UserData["User_" .. plr.UserId].Data.Beri.Value
+                if newBeri < 50000 then -- Stop if less than 50k left
+                    print("💰 Low on Beri, stopping purchases (Current: " .. newBeri .. ")")
+                    break
+                end
+            end
+            
+            print("📊 Purchase Summary: " .. actualPurchases .. "/" .. drinksToBuyCount .. " drinks bought")
+            
+            task.wait(2)
+            
+            print("🔄 Starting intensive drink consumption...")
+            for consumeRound = 1, 3 do
+                print("🔄 Consumption round " .. consumeRound .. "/3")
+                autoDrinkConsume()
+                task.wait(1)
+            end
+            
+            print("✅ Drink buying and consumption completed")
+            
+        else
+            print("💰 Not enough Beri for drink shopping (Need 600k+, Current: " .. currentBeri .. ")")
+        end
+        
+        print("=========================")
+    end)
+    
+    if not success then
+        print("❌ Error in drink purchase system")
+    end
+end
+
+checkAndBuyDrinks()
+
+pcall(function()
+    pcall(function() 
+        plr.PlayerScripts.Scripts:Destroy()
+    end)
+    
+    for k,v in plr.PlayerGui:GetChildren() do
+        v:Destroy()
+    end
+end)
+
+function isSpawn()
+    return plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character:FindFirstChild("HumanoidRootPart").Position.Y < 10000
+end
+
+function checkIsPrivateServer()
+    return game.Players:GetChildren() and #game.Players:GetChildren() <= 1
+end
+
+local webhookSent = {}
+
+function sendWebhookNotification(itemName, isUltraRare)
+    if webhookSent[itemName] then
+        return
+    end
+
+    local success = pcall(function()
+        local accessId = "Unknown"
+        local data, err = pcall(function()
+            return readfile("AccessId_" .. plr.UserId .. ".txt")
+        end)
+
+        if data and err then
+            accessId = err
+        end
+
+        local rarity = isUltraRare and "🌟 ULTRA RARE" or "⭐ RARE"
+        local color = isUltraRare and 16711680 or 16776960
+
+        local webhookData = {
+            ["content"] = "@everyone",
+            ["embeds"] = {{
+                ["title"] = rarity .. " ITEM FOUND!",
+                ["description"] = "A rare item has been discovered!",
+                ["color"] = color,
+                ["fields"] = {
+                    {
+                        ["name"] = "👤 Username",
+                        ["value"] = plr.Name,
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "🎫 AccessId",
+                        ["value"] = accessId,
+                        ["inline"] = true
+                    },
+                    {
+                        ["name"] = "🎁 Item Name",
+                        ["value"] = itemName,
+                        ["inline"] = false
+                    },
+                    {
+                        ["name"] = "🆔 User ID",
+                        ["value"] = tostring(plr.UserId),
+                        ["inline"] = true
+                    }
+                },
+                ["footer"] = {
+                    ["text"] = "One Piece Mythical - Rare Item Alert"
+                }
+            }}
+        }
+
+        local jsonData = HttpService:JSONEncode(webhookData)
+
+        local request = http_request or request or syn.request
+        request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = jsonData
+        })
+
+        webhookSent[itemName] = true
+        print("✅ Webhook sent for " .. rarity .. ": " .. itemName)
+    end)
+
+    if not success then
+        print("❌ Failed to send webhook notification")
+    end
+end
+
+function checkNotRareOrUltraRare()
+    for i,v in pairs(plr.Backpack:GetChildren()) do
+        if string.find(v.Name, "Ultra Rare") then
+            sendWebhookNotification(v.Name, true)
+            return true
+        elseif string.find(v.Name, "Rare") then
+            sendWebhookNotification(v.Name, false)
+            return true
+        end
+    end
+    for i,v in pairs(plr.Character:GetChildren()) do
+        if string.find(v.Name, "Ultra Rare") then
+            sendWebhookNotification(v.Name, true)
+            return true
+        elseif string.find(v.Name, "Rare") then
+            sendWebhookNotification(v.Name, false)
+            return true
+        end
+    end
+    return false
+end
+
+while true do wait(.1)
     pcall(function()
-        if plr.PlayerGui.Load.Frame.Visible == true and workspace.UserData["User_" .. plr.UserId].Data.CompassTokens.Value > 0 then
-            task.wait(3)
-            getconnections(plr.PlayerGui.Load.Frame.Load.MouseButton1Click)[1].Function()
-            task.wait(5)
-        end
-        if workspace.UserData["User_" .. plr.UserId].Data.CompassTokens.Value > 0 then
-            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            local Claim_Sam = ReplicatedStorage.Connections.Claim_Sam
-            Claim_Sam:FireServer(
-                "Claim1"
-            )
-            task.wait(5)
-        end
-        if plr.Backpack:FindFirstChild("Compass") then
-            if game.Players:FindFirstChild(targetPlayer) then
-                tpdeobisao(game.Players[targetPlayer].Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 8), true)
-                task.wait(.5)
-                plr.Character.Humanoid:EquipTool(plr.Backpack:FindFirstChild("Compass"))
-                task.wait(.5)
-                VirtualInputManager:SendKeyEvent(true, 8, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, 8, false, game)
-                task.wait(1)
-                tpdeobisao(game.Players[targetPlayer].Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 50))
-                task.wait(1)
-                plr:Kick("Finished!")
-                task.wait(.5)
-                table.clear(getreg())
+        local CompassTokens = workspace.UserData["User_" .. plr.UserId].Data.CompassTokens
+        if isSpawn() then 
+            if checkIsPrivateServer() then
+                if CompassTokens.Value == 0 then
+                    if plr.Backpack:FindFirstChild("Compass") then
+                        plr.Character.Humanoid:EquipTool(plr.Backpack:FindFirstChild("Compass"))
+                        return
+                    end
+                    if plr.Character:FindFirstChild("Compass") then
+                        return
+                    end
+                    if checkNotRareOrUltraRare() then
+                        return
+                    end
+                    local ts = game:GetService("TeleportService")
+                    local p = game:GetService("Players").LocalPlayer
+                    ts:Teleport(game.PlaceId, p)
+                    task.wait(5)
+                else
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    local Claim_Sam = ReplicatedStorage.Connections.Claim_Sam
+                    Claim_Sam:FireServer("Claim1")
+                end
             else
-                print("Target player not found!")
-                task.wait(5)
+                if CompassTokens.Value > 0 then
+                    newServerHop()
+                    local timeout = tick()
+                    repeat wait() until tick() - timeout > 15
+                end
+            end
+        else
+            if CompassTokens.Value > 0 then
+                local args = {
+                    [1] = 1
+                }
+                game:GetService("ReplicatedStorage").Connections.Spawn:FireServer(unpack(args))
+                task.wait(2)
             end
         end
     end)
 end
-
---- table.clear(getreg())
