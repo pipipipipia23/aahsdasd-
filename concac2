@@ -693,7 +693,8 @@ while true do wait(5)
                     local ts = game:GetService("TeleportService")
                     local p = game:GetService("Players").LocalPlayer
                     ts:Teleport(game.PlaceId, p)
-                    task.wait(5)
+                    task.wait(8)
+                    plr:Kick("OverTime - Rejoin Pls")
                 else
                     local ReplicatedStorage = game:GetService("ReplicatedStorage")
                     local Claim_Sam = ReplicatedStorage.Connections.Claim_Sam
