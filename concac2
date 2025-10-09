@@ -702,7 +702,7 @@ while true do wait(5)
                 end
             else
                 if CompassTokens.Value > 0 then
-                    task.wait(10)
+                    task.wait(20)
                     newServerHop()
                     local timeout = tick()
                     repeat wait() until tick() - timeout > 15
