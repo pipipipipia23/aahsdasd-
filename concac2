@@ -648,6 +648,9 @@ end
 
 function checkNotRareOrUltraRare()
     for i,v in pairs(plr.Backpack:GetChildren()) do
+        if string.find(v.Name, "Fruit") then
+            return true
+        end
         if string.find(v.Name, "Ultra Rare") then
             sendWebhookNotification(v.Name, true)
             return true
@@ -657,6 +660,9 @@ function checkNotRareOrUltraRare()
         end
     end
     for i,v in pairs(plr.Character:GetChildren()) do
+        if string.find(v.Name, "Fruit") then
+            return true
+        end
         if string.find(v.Name, "Ultra Rare") then
             sendWebhookNotification(v.Name, true)
             return true
