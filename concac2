@@ -668,7 +668,7 @@ function checkNotRareOrUltraRare()
     return false
 end
 
-while true do wait(.1)
+while true do wait(5)
     pcall(function()
         local CompassTokens = workspace.UserData["User_" .. plr.UserId].Data.CompassTokens
         if isSpawn() then 
